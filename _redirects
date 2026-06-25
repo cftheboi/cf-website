@@ -1,3 +1,6 @@
+# Substack RSS proxy (avoids CORS)
+/substack-feed  https://cfchan.substack.com/feed  200
+
 # Clean URL rewrites (serve .html files at clean paths)
 /home     /home.html     200
 /about    /about.html    200
