@@ -1,0 +1,9 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[[redirects]]
+  from   = "/substack-feed"
+  to     = "https://cfchan.substack.com/feed"
+  status = 200
+  force  = true
