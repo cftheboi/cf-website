@@ -171,11 +171,10 @@ function normaliseSubstackPost(post) {
       const vis = catVisual(cats[0]);
       const date = post.post_date ? new Date(post.post_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
       const mins = post.wordcount ? Math.max(1, Math.round(post.wordcount / 200)) + ' MIN READ' : '';
-      const excerpt = post.description.slice(0, 115).trim();
       const visual = post.cover_image
         ? `<div class="post-visual post-visual-img" style="background-image:url('${post.cover_image}')"></div>`
         : `<div class="post-visual ${vis.cls}"><span>${vis.label}</span></div>`;
-      return `<a class="post-card" data-category="${cats.join(' ')}" href="${post.canonical_url}" target="_blank" rel="noopener">${visual}<p>${vis.display}${mins ? ' · ' + mins : ''} · ${date}</p><h3>${post.title}</h3>${excerpt ? `<small>${excerpt}</small>` : ''}</a>`;
+      return `<a class="post-card" data-category="${cats.join(' ')}" href="${post.canonical_url}" target="_blank" rel="noopener">${visual}<p>${vis.display}${mins ? ' · ' + mins : ''} · ${date}</p><h3>${post.title}</h3></a>`;
     }).join('');
 
     const activeFilters = [...document.querySelectorAll('.blog-filter button.active')].map(b => b.dataset.filter);
