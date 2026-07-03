@@ -55,36 +55,61 @@ document.querySelectorAll('.blog-filter button').forEach((button) => {
 });
 
 async function fetchSubstackRSS(limit) {
-  // /substack-feed is a Netlify proxy (same-origin, no CORS). Falls back to direct RSS on localhost.
-  let res;
+  // Prefer the same-origin Netlify proxy. If the site is hosted somewhere that
+  // ignores Netlify redirects, use rss2json as a CORS-friendly fallback.
+  let xmlText = '';
   try {
-    res = await fetch('/substack-feed');
-    if (!res.ok) throw new Error();
+    const res = await fetch('/substack-feed', { headers: { Accept: 'application/rss+xml, application/xml, text/xml' } });
+    if (!res.ok) throw new Error(`Feed proxy returned ${res.status}`);
+    xmlText = await res.text();
+    if (!/<(?:rss|feed)[\s>]/i.test(xmlText)) throw new Error('Feed proxy did not return RSS');
   } catch {
-    res = await fetch('https://cfchan.substack.com/feed');
-    if (!res.ok) throw new Error();
+    const apiUrl = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://cfchan.substack.com/feed');
+    const res = await fetch(apiUrl);
+    if (!res.ok) throw new Error(`RSS fallback returned ${res.status}`);
+    const data = await res.json();
+    if (data.status !== 'ok' || !Array.isArray(data.items)) throw new Error('RSS fallback returned invalid data');
+    return data.items.slice(0, limit).map(item => normaliseSubstackPost({
+      title: item.title,
+      canonical_url: item.link || item.guid,
+      post_date: item.pubDate,
+      cover_image: item.thumbnail || item.enclosure?.link || '',
+      description: item.description || item.content || '',
+      postTags: item.categories || []
+    }));
   }
-  const xml = new DOMParser().parseFromString(await res.text(), 'text/xml');
+  const xml = new DOMParser().parseFromString(xmlText, 'text/xml');
+  if (xml.querySelector('parsererror')) throw new Error('Invalid RSS XML');
   const items = Array.from(xml.querySelectorAll('item')).slice(0, limit);
   if (!items.length) throw new Error();
   return items.map(item => {
     const get = tag => item.querySelector(tag)?.textContent?.trim() || '';
-    const rawDesc = get('description');
-    const desc = rawDesc.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#\d+;/g, '').trim();
-    const cover = item.querySelector('enclosure')?.getAttribute('url') || '';
-    const tags = Array.from(item.querySelectorAll('category')).map(c => c.textContent.trim());
-    const pubDate = get('pubDate');
-    return {
+    return normaliseSubstackPost({
       title: get('title'),
       canonical_url: get('guid') || get('link'),
-      post_date: pubDate ? new Date(pubDate).toISOString() : '',
-      cover_image: cover,
-      subtitle: desc.slice(0, 160),
-      description: desc,
-      wordcount: Math.ceil(desc.split(/\s+/).length * 5),
-      postTags: tags
-    };
+      post_date: get('pubDate'),
+      cover_image: item.querySelector('enclosure')?.getAttribute('url') || '',
+      description: get('description'),
+      postTags: Array.from(item.querySelectorAll('category')).map(c => c.textContent.trim())
+    });
   });
+}
+
+function normaliseSubstackPost(post) {
+  const decodeBox = document.createElement('textarea');
+  decodeBox.innerHTML = String(post.description || '').replace(/<[^>]+>/g, ' ');
+  const desc = decodeBox.value.replace(/\s+/g, ' ').trim();
+  const parsedDate = post.post_date ? new Date(post.post_date) : null;
+  return {
+    title: post.title || '',
+    canonical_url: post.canonical_url || 'https://substack.com/@cfchan',
+    post_date: parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : '',
+    cover_image: post.cover_image || '',
+    subtitle: desc.slice(0, 160),
+    description: desc,
+    wordcount: desc ? Math.ceil(desc.split(/\s+/).length * 5) : 0,
+    postTags: post.postTags || []
+  };
 }
 
 // Homepage insight grid — latest 3 from Substack
