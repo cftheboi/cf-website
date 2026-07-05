@@ -1,5 +1,50 @@
 
 const menuButton = document.querySelector('.menu-toggle');
+
+// Shared bilingual SEO/GEO signals for crawlers that render JavaScript.
+(function addDiscoveryMetadata() {
+  const page = location.pathname.split('/').pop() || 'index.html';
+  const pairs = {
+    'index.html': ['https://cfchan.hk/', 'https://cfchan.hk/home-zh.html'],
+    'home.html': ['https://cfchan.hk/', 'https://cfchan.hk/home-zh.html'],
+    'home-zh.html': ['https://cfchan.hk/', 'https://cfchan.hk/home-zh.html'],
+    'about.html': ['https://cfchan.hk/about.html', 'https://cfchan.hk/about-zh.html'],
+    'about-zh.html': ['https://cfchan.hk/about.html', 'https://cfchan.hk/about-zh.html'],
+    'blog.html': ['https://cfchan.hk/blog.html', 'https://cfchan.hk/blog-zh.html'],
+    'blog-zh.html': ['https://cfchan.hk/blog.html', 'https://cfchan.hk/blog-zh.html'],
+    'contact.html': ['https://cfchan.hk/contact.html', 'https://cfchan.hk/contact-zh.html'],
+    'contact-zh.html': ['https://cfchan.hk/contact.html', 'https://cfchan.hk/contact-zh.html']
+  };
+  const urls = pairs[page] || pairs['index.html'];
+  [['en-HK', urls[0]], ['zh-Hant-HK', urls[1]], ['x-default', urls[0]]].forEach(([lang, href]) => {
+    if (document.querySelector(`link[rel="alternate"][hreflang="${lang}"]`)) return;
+    const link = document.createElement('link');
+    link.rel = 'alternate';
+    link.hreflang = lang;
+    link.href = href;
+    document.head.appendChild(link);
+  });
+
+  if (!document.querySelector('script[data-entity-schema]')) {
+    const schema = document.createElement('script');
+    schema.type = 'application/ld+json';
+    schema.dataset.entitySchema = 'true';
+    schema.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Person',
+      '@id': 'https://cfchan.hk/#person',
+      name: 'Chan Chak Fung',
+      alternateName: ['CF Chan', '陳澤鋒'],
+      url: 'https://cfchan.hk/',
+      image: 'https://cfchan.hk/assets/portrait.jpeg',
+      sameAs: ['https://cfchan.substack.com/'],
+      knowsAbout: ['Artificial Intelligence', 'Low-Altitude Economy', 'Drones', 'Entrepreneurship', 'Business Transformation', 'Technology Strategy'],
+      address: { '@type': 'PostalAddress', addressLocality: 'Hong Kong', addressCountry: 'HK' }
+    });
+    document.head.appendChild(schema);
+  }
+}());
+
 const nav = document.querySelector('.nav');
 menuButton?.addEventListener('click', () => {
   const isOpen = nav.classList.toggle('open');
@@ -336,3 +381,41 @@ if (copyBtn) {
     });
   });
 }
+
+// Lightweight internal page transitions, including mobile and back navigation.
+(function setupPageTransitions() {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes page-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    body{animation:page-enter .34s cubic-bezier(.22,1,.36,1) both}
+    body.page-leaving{opacity:0;transform:translateY(-6px);transition:opacity .2s ease,transform .2s ease;pointer-events:none}
+    @media(max-width:620px){body{animation-duration:.28s}body.page-leaving{transition-duration:.17s}}
+    @media(prefers-reduced-motion:reduce){body{animation:none}body.page-leaving{opacity:1;transform:none;transition:none}}
+  `;
+  document.head.appendChild(style);
+
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let navigating = false;
+
+  window.addEventListener('pageshow', () => {
+    navigating = false;
+    document.body.classList.remove('page-leaving');
+  });
+
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest('a[href]');
+    if (!link || event.defaultPrevented || navigating || reducedMotion.matches) return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if ((link.target && link.target !== '_self') || link.hasAttribute('download')) return;
+
+    const destination = new URL(link.href, window.location.href);
+    if (destination.origin !== window.location.origin || !/^https?:$/.test(destination.protocol)) return;
+    if (destination.pathname === window.location.pathname &&
+        destination.search === window.location.search && destination.hash) return;
+
+    event.preventDefault();
+    navigating = true;
+    document.body.classList.add('page-leaving');
+    window.setTimeout(() => window.location.assign(destination.href), 200);
+  });
+}());

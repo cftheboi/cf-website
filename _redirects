@@ -1,14 +1,15 @@
 # Substack RSS proxy (avoids CORS)
 /substack-feed  https://cfchan.substack.com/feed  200
 
-# Clean URL rewrites (serve .html files at clean paths)
-/home     /home.html     200
-/about    /about.html    200
-/blog     /blog.html     200
-/contact  /contact.html  200
+# Consolidate duplicate home URLs onto the canonical root URL.
+/home        /  301!
+/home.html   /  301!
+/index.html  /  301!
 
-# Root → home
-/         /home.html     200
+# Keep the existing .html URLs canonical.
+/about    /about.html    301!
+/blog     /blog.html     301!
+/contact  /contact.html  301!
 
-# 404 fallback
-/*        /home.html     404
+# Friendly 404 fallback while preserving a 404 status.
+/*  /  404

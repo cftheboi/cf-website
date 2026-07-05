@@ -1,32 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://cfchan.hk/</loc>
-    <lastmod>2026-06-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
+    <loc>https://cfchan.hk/</loc><lastmod>2026-07-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="en-HK" href="https://cfchan.hk/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant-HK" href="https://cfchan.hk/home-zh.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cfchan.hk/" />
   </url>
-
   <url>
-    <loc>https://cfchan.hk/about.html</loc>
-    <lastmod>2026-06-22</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.9</priority>
+    <loc>https://cfchan.hk/home-zh.html</loc><lastmod>2026-07-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="en-HK" href="https://cfchan.hk/" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant-HK" href="https://cfchan.hk/home-zh.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cfchan.hk/" />
   </url>
-
   <url>
-    <loc>https://cfchan.hk/blog.html</loc>
-    <lastmod>2026-06-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <loc>https://cfchan.hk/about.html</loc><lastmod>2026-07-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="en-HK" href="https://cfchan.hk/about.html" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant-HK" href="https://cfchan.hk/about-zh.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cfchan.hk/about.html" />
   </url>
-
   <url>
-    <loc>https://cfchan.hk/contact.html</loc>
-    <lastmod>2026-06-22</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <loc>https://cfchan.hk/about-zh.html</loc><lastmod>2026-07-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="en-HK" href="https://cfchan.hk/about.html" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant-HK" href="https://cfchan.hk/about-zh.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cfchan.hk/about.html" />
   </url>
-
+  <url>
+    <loc>https://cfchan.hk/blog.html</loc><lastmod>2026-07-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="en-HK" href="https://cfchan.hk/blog.html" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant-HK" href="https://cfchan.hk/blog-zh.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cfchan.hk/blog.html" />
+  </url>
+  <url>
+    <loc>https://cfchan.hk/blog-zh.html</loc><lastmod>2026-07-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="en-HK" href="https://cfchan.hk/blog.html" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant-HK" href="https://cfchan.hk/blog-zh.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cfchan.hk/blog.html" />
+  </url>
+  <url>
+    <loc>https://cfchan.hk/contact.html</loc><lastmod>2026-07-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="en-HK" href="https://cfchan.hk/contact.html" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant-HK" href="https://cfchan.hk/contact-zh.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cfchan.hk/contact.html" />
+  </url>
+  <url>
+    <loc>https://cfchan.hk/contact-zh.html</loc><lastmod>2026-07-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="en-HK" href="https://cfchan.hk/contact.html" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant-HK" href="https://cfchan.hk/contact-zh.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cfchan.hk/contact.html" />
+  </url>
 </urlset>
