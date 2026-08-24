@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>陰涼路線 HK Shadow</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+<style>
+  * { box-sizing: border-box; }
+  html, body, #app { height: 100%; margin: 0; font-family: -apple-system, "Segoe UI", "PingFang HK", "Microsoft JhengHei", sans-serif; touch-action: manipulation; overscroll-behavior: none; }
+  #app { display: flex; flex-direction: column; padding-bottom: env(safe-area-inset-bottom); }
+
+  .app-header { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem 0.75rem; padding: 0.6rem 1rem; padding-top: calc(0.6rem + env(safe-area-inset-top)); background: #0f172a; color: #f8fafc; z-index: 2; }
+  .app-header h1 { font-size: 1.15rem; margin: 0; letter-spacing: 0.02em; }
+  .subtitle { margin: 0; font-size: 0.75rem; color: #94a3b8; flex: 1; }
+  .weather-badges { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .weather-badge { font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 999px; background: #334155; white-space: nowrap; }
+  .uv-badge { background: #7c2d12; }
+  .warning-badge { background: #b91c1c; }
+  .work-heat-badge.amber { background: #b45309; }
+  .work-heat-badge.red { background: #b91c1c; }
+
+  .weather-warning, .work-heat-warning { display: block; width: 100%; border: none; font-family: inherit; cursor: pointer; font-size: 0.85rem; font-weight: 600; padding: 0.5rem 1rem; text-align: center; color: white; }
+  .weather-warning { background: #b91c1c; }
+  .work-heat-warning.amber { background: #b45309; }
+  .work-heat-warning.red { background: #b91c1c; }
+  .weather-warning:active, .work-heat-warning:active { opacity: 0.85; }
+
+  .map-wrap { position: relative; flex: 1; min-height: 0; }
+  #map { position: absolute; inset: 0; }
+
+  .loading-overlay { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: rgba(15,23,42,0.94); color: #f1f5f9; transition: opacity 0.4s ease; }
+  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .loading-spinner { width: 40px; height: 40px; border: 3px solid rgba(148,163,184,0.25); border-top-color: #38bdf8; border-radius: 50%; animation: loading-spin 0.8s linear infinite; }
+  .loading-overlay p { margin: 0; font-size: 0.82rem; color: #94a3b8; }
+  @keyframes loading-spin { to { transform: rotate(360deg); } }
+
+  .top-panels, .bottom-panels { position: absolute; left: 8px; right: 8px; display: flex; flex-wrap: wrap; gap: 8px; z-index: 3; pointer-events: none; }
+  .top-panels { top: 8px; align-items: flex-start; }
+  .bottom-panels { bottom: 8px; align-items: flex-end; }
+
+  .panel { background: rgba(15, 23, 42, 0.92); color: #f1f5f9; border-radius: 10px; padding: 0.6rem 0.75rem; font-size: 0.82rem; pointer-events: auto; max-width: 280px; }
+  @media (max-width: 480px) { .panel { max-width: none; flex: 1 1 100%; } .instructions { margin-right: 46px; } .app-header h1 { font-size: 1rem; } .subtitle { display: none; } }
+
+  .panel h2 { font-size: 0.85rem; margin: 0 0 0.4rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .panel p { margin: 0.25rem 0; line-height: 1.4; }
+  .panel input, .panel button, .panel select { font-family: inherit; font-size: 16px; min-height: 40px; }
+
+  .collapse-toggle { align-self: flex-end; background: none; border: none; color: #94a3b8; font-size: 1rem; cursor: pointer; padding: 2px 6px; min-height: auto !important; }
+
+  .search-row { position: relative; margin: 0.3rem 0; }
+  .search-row input { width: 100%; padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid #475569; background: #1e293b; color: #f1f5f9; }
+  .suggestions { position: absolute; top: 100%; left: 0; right: 0; background: #1e293b; border: 1px solid #475569; border-radius: 6px; max-height: 180px; overflow-y: auto; z-index: 5; margin-top: 2px; }
+  .suggestion-item { padding: 0.5rem 0.6rem; cursor: pointer; border-bottom: 1px solid #334155; font-size: 0.8rem; }
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:hover, .suggestion-item:active { background: #334155; }
+
+  .hint { color: #94a3b8; font-size: 0.72rem; }
+  .live-shadow-row { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.4rem; }
+  .live-shadow-row input[type=checkbox] { width: 20px; height: 20px; accent-color: #38bdf8; }
+
+  .btn { display: block; width: 100%; border: none; border-radius: 8px; padding: 0.5rem 0.7rem; cursor: pointer; font-weight: 600; margin-top: 0.4rem; }
+  .btn:active { opacity: 0.85; }
+  .btn-primary { background: #2563eb; color: white; }
+  .btn-locate { background: #16a34a; color: white; }
+  .clear-all-btn { background: #b91c1c; color: white; position: relative; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 0.4rem; }
+  .tab-btn { flex: 1; background: #1e293b; color: #94a3b8; border: 1px solid #334155; border-radius: 6px; padding: 0.35rem; font-size: 0.75rem; cursor: pointer; min-height: 34px !important; }
+  .tab-btn.active { background: #2563eb; color: white; border-color: #2563eb; }
+
+  .routes { display: flex; flex-direction: column; gap: 6px; }
+  .route-card { border-radius: 8px; padding: 0.5rem 0.6rem; border: 2px solid transparent; }
+  .route-card.fastest { background: rgba(59,130,246,0.15); border-color: #3b82f6; }
+  .route-card.shadiest { background: rgba(34,197,94,0.15); border-color: #22c55e; }
+  .route-card h3 { margin: 0 0 0.2rem; font-size: 0.8rem; }
+  .route-card .stats { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 0.75rem; color: #cbd5e1; }
+
+  .bus-result { display: block; width: 100%; text-align: left; background: #1e293b; color: #f1f5f9; border: 1px solid #334155; border-radius: 6px; padding: 0.45rem 0.6rem; margin-bottom: 4px; cursor: pointer; font-size: 0.78rem; min-height: 40px !important; }
+  .bus-result:active { background: #334155; }
+
+  .legend { display: flex; gap: 10px; font-size: 0.72rem; }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  .toast { background: rgba(15,23,42,0.92); color: #f1f5f9; border-radius: 8px; padding: 0.5rem 0.8rem; font-size: 0.8rem; pointer-events: none; }
+  .toast.error { background: rgba(153,27,27,0.92); }
+
+  .maplibregl-ctrl-locate { background: #16a34a !important; }
+  .maplibregl-ctrl-locate button { width: 32px; height: 32px; display:flex; align-items:center; justify-content:center; font-size:16px; background:none; border:none; cursor:pointer; }
+
+  footer.credit { text-align: center; font-size: 0.65rem; color: #94a3b8; background: #0f172a; padding: 0.3rem; }
+  footer.credit a { color: #94a3b8; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="app-header">
+    <h1>☀️ 陰涼路線 <span style="font-weight:400;font-size:0.75em;">HK Shadow</span></h1>
+    <p class="subtitle">香港政府開放數據 · 陰影感知步行路線</p>
+    <div class="weather-badges" id="weatherBadges"></div>
+  </header>
+  <div id="warningBanners"></div>
+
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="loading-spinner"></div>
+      <p>載入地圖及陰影數據中…</p>
+    </div>
+
+    <div class="top-panels" id="topPanels">
+      <div class="panel instructions" id="instructionsPanel">
+        <h2>路線 / 巴士
+          <button class="collapse-toggle" id="collapseToggle" title="收合/展開">▲</button>
+        </h2>
+        <div id="instructionsBody">
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="route">🚶 路線</button>
+            <button class="tab-btn" data-tab="bus">🚌 巴士</button>
+          </div>
+
+          <div id="routeTab">
+            <div class="search-row">
+              <input type="text" id="fromInput" placeholder="起點（中文或英文地址）" autocomplete="off" />
+              <div class="suggestions" id="fromSuggestions" style="display:none;"></div>
+            </div>
+            <div class="search-row">
+              <input type="text" id="toInput" placeholder="終點（中文或英文地址）" autocomplete="off" />
+              <div class="suggestions" id="toSuggestions" style="display:none;"></div>
+            </div>
+            <p class="hint">👆 或直接在地圖上點兩下（起點→終點）</p>
+            <button class="btn btn-locate" id="locateBtn">📍 使用我的位置作起點</button>
+            <div class="live-shadow-row">
+              <input type="checkbox" id="liveShadowToggle" checked />
+              <label for="liveShadowToggle">即時陰影</label>
+            </div>
+            <p class="hint" id="sunInfo"></p>
+          </div>
+
+          <div id="busTab" style="display:none;">
+            <div class="search-row">
+              <input type="text" id="busRouteInput" placeholder="輸入巴士路線號碼，如 1A" autocomplete="off" />
+            </div>
+            <button class="btn btn-primary" id="busSearchBtn">搜尋</button>
+            <div id="busResults"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-panels" id="bottomPanels">
+      <div class="panel legend">
+        <span><i style="background:#e6ded0"></i>建築物</span>
+        <span><i style="background:#38bdf8;opacity:.5"></i>陰影</span>
+        <span><i style="background:#22c55e"></i>蔭涼路線</span>
+        <span><i style="background:#3b82f6"></i>最快路線</span>
+      </div>
+      <div class="panel routes" id="routesPanel" style="display:none;"></div>
+    </div>
+  </div>
+
+  <footer class="credit">資料來源：CSDI（地政總署／路政署）、香港天文台、九巴 ETA Open Data · 僅供參考，非官方應用</footer>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@turf/turf@7.1.0/turf.min.js"></script>
+<script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ---------------------------------------------------------------------
+  // Config (mirrors backend/src + shared/src of the full Sun Location app)
+  // ---------------------------------------------------------------------
+  const HK_REFERENCE_POINT = [114.17, 22.32];
+  const ROUTE_BBOX_PADDING_DEG = 0.006;
+  // Matches backend/src/tiles.js's own proven tile size. Tried doubling
+  // this to cut request *count* per viewport, but it backfired: bigger
+  // tiles mean denser areas need more paginated pages per tile, and one
+  // failed page was enough to blank out that whole tile's data for a
+  // source (see fetchBuildingsInBbox/fetchFootwaysInBbox below for how
+  // that's now handled instead).
+  const TILE_SIZE_DEG = 0.01;
+  const MAX_TILES_PER_REQUEST = 120;
+  const LIVE_SHADOW_REFRESH_MS = 15000;
+  const VIEWPORT_FETCH_DEBOUNCE_MS = 600;
+  const GEOCODE_DEBOUNCE_MS = 350;
+  const MIN_GEOCODE_QUERY_LENGTH = 2;
+  const INITIAL_CENTER = [114.156, 22.2865];
+  const INITIAL_ZOOM = 15.5;
+  const EMPTY_FC = { type: 'FeatureCollection', features: [] };
+
+  const CSDI_BUILDING_URL = 'https://portal.csdi.gov.hk/server/services/common/landsd_rcd_1637211194312_35158/MapServer/WFSServer';
+  const CSDI_PEDESTRIAN_URL = 'https://portal.csdi.gov.hk/server/services/common/landsd_rcd_1637222018065_52265/MapServer/WFSServer';
+  const CSDI_FOOTBRIDGE_URL = 'https://portal.csdi.gov.hk/server/services/common/hyd_rcd_1632360512481_74705/MapServer/WFSServer';
+  const CSDI_BRIDGE_URL = 'https://portal.csdi.gov.hk/server/services/common/hyd_rcd_1632360050986_38630/MapServer/WFSServer';
+  const CSDI_NOISE_BARRIER_URL = 'https://portal.csdi.gov.hk/server/services/common/hyd_rcd_1632360656336_40750/MapServer/WFSServer';
+  const CSDI_DISTRICT_URL = 'https://portal.csdi.gov.hk/server/services/common/had_rcd_1634523272907_75218/MapServer/WFSServer';
+  const HKO_WEATHER_URL = 'https://data.weather.gov.hk/weatherAPI/opendata/weather.php';
+  const HKO_HSWW_URL = 'https://data.weather.gov.hk/weatherAPI/opendata/hsww.php';
+  const ALS_URL = 'https://www.als.gov.hk/lookup';
+  const KMB_STOP_URL = 'https://data.etabus.gov.hk/v1/transport/kmb/stop';
+  const KMB_ROUTE_URL = 'https://data.etabus.gov.hk/v1/transport/kmb/route/';
+  const KMB_ROUTE_STOP_URL = 'https://data.etabus.gov.hk/v1/transport/kmb/route-stop';
+  const BOUND_TO_DIRECTION = { O: 'outbound', I: 'inbound' };
+
+  const STRUCTURE_LAYERS = [
+    { key: 'buildings', color: '#e6ded0', outlineColor: '#4b4638', base: 0 },
+    { key: 'footbridges', color: '#9aa1a8', outlineColor: '#5b6167', base: ['-', ['get', 'heightM'], 0.6] },
+    { key: 'bridges', color: '#8b8f99', outlineColor: '#454850', base: ['-', ['get', 'heightM'], 1] },
+    { key: 'noiseBarriers', color: '#c7cdd0', outlineColor: '#5f6b6f', base: 0 },
+  ];
+
+  const MAP_STYLE = {
+    version: 8,
+    sources: {
+      carto: {
+        type: 'raster',
+        tiles: [
+          'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+          'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+          'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+          'https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        ],
+        tileSize: 256,
+        attribution: '© OpenStreetMap contributors © CARTO',
+      },
+    },
+    layers: [{ id: 'carto-base', type: 'raster', source: 'carto' }],
+  };
+
+  // ---------------------------------------------------------------------
+  // shared/src/sun.js + shadow.js port (pure functions, no backend needed)
+  // ---------------------------------------------------------------------
+  function getSunPosition(date, lat, lon) {
+    const { altitude, azimuth } = SunCalc.getPosition(date, lat, lon);
+    const altitudeDeg = (altitude * 180) / Math.PI;
+    const bearingDeg = ((azimuth * 180) / Math.PI + 180 + 360) % 360;
+    return { altitudeDeg, bearingDeg, isDaylight: altitudeDeg > 0 };
+  }
+  function shadowBearingDeg(sunBearingDeg) { return (sunBearingDeg + 180) % 360; }
+
+  const MAX_SHADOW_LENGTH_M = 80;
+  const MIN_ALTITUDE_DEG = 2;
+  function shadowLengthM(heightM, altitudeDeg) {
+    const altRad = (Math.max(altitudeDeg, MIN_ALTITUDE_DEG) * Math.PI) / 180;
+    return Math.min(MAX_SHADOW_LENGTH_M, heightM / Math.tan(altRad));
+  }
+  function translatedRing(coords, bearingDeg, distanceM) {
+    const distanceKm = distanceM / 1000;
+    return coords.map(([lon, lat]) => turf.destination([lon, lat], distanceKm, bearingDeg, { units: 'kilometers' }).geometry.coordinates);
+  }
+  function outerRings(geometry) {
+    if (geometry.type === 'Polygon') return [geometry.coordinates[0]];
+    if (geometry.type === 'MultiPolygon') return geometry.coordinates.map((poly) => poly[0]);
+    return [];
+  }
+  function buildingShadowPolygon(footprintFeature, heightM, sunPos) {
+    if (!sunPos.isDaylight || heightM <= 0) return null;
+    const bearing = shadowBearingDeg(sunPos.bearingDeg);
+    const length = shadowLengthM(heightM, sunPos.altitudeDeg);
+    const rings = outerRings(footprintFeature.geometry);
+    if (rings.length === 0) return null;
+    const allCoords = rings.flat();
+    const translated = translatedRing(allCoords, bearing, length);
+    const points = turf.featureCollection([...allCoords, ...translated].map((c) => turf.point(c)));
+    try { return turf.convex(points); } catch { return null; }
+  }
+
+  // ---------------------------------------------------------------------
+  // backend/src/graph.js + dijkstra.js + routing.js + shade.js port
+  // ---------------------------------------------------------------------
+  const COORD_PRECISION = 6;
+  function nodeKey([lon, lat]) { return `${lon.toFixed(COORD_PRECISION)},${lat.toFixed(COORD_PRECISION)}`; }
+  function buildGraph(footwaysFC) {
+    const nodes = new Map();
+    const adjacency = new Map();
+    const addNode = (coord) => {
+      const key = nodeKey(coord);
+      if (!nodes.has(key)) { nodes.set(key, coord); adjacency.set(key, []); }
+      return key;
+    };
+    const addEdge = (keyA, keyB, coordA, coordB, gradient) => {
+      const distanceM = turf.distance(coordA, coordB, { units: 'kilometers' }) * 1000;
+      if (distanceM === 0) return;
+      const midpoint = [(coordA[0] + coordB[0]) / 2, (coordA[1] + coordB[1]) / 2];
+      adjacency.get(keyA).push({ to: keyB, distanceM, midpoint, coords: [coordA, coordB], gradient });
+      adjacency.get(keyB).push({ to: keyA, distanceM, midpoint, coords: [coordB, coordA], gradient });
+    };
+    for (const feature of footwaysFC.features) {
+      const coords = feature.geometry.coordinates;
+      const gradient = feature.properties?.gradient ?? null;
+      for (let i = 0; i < coords.length - 1; i++) {
+        const keyA = addNode(coords[i]);
+        const keyB = addNode(coords[i + 1]);
+        addEdge(keyA, keyB, coords[i], coords[i + 1], gradient);
+      }
+    }
+    return { nodes, adjacency };
+  }
+  function nearestNode(graph, point) {
+    let bestKey = null, bestDist = Infinity;
+    for (const [key, coord] of graph.nodes) {
+      const d = turf.distance(point, coord, { units: 'kilometers' });
+      if (d < bestDist) { bestDist = d; bestKey = key; }
+    }
+    return bestKey;
+  }
+
+  class MinHeap {
+    constructor() { this.items = []; }
+    get size() { return this.items.length; }
+    push(priority, value) {
+      this.items.push([priority, value]);
+      let i = this.items.length - 1;
+      while (i > 0) {
+        const parent = (i - 1) >> 1;
+        if (this.items[parent][0] <= this.items[i][0]) break;
+        [this.items[parent], this.items[i]] = [this.items[i], this.items[parent]];
+        i = parent;
+      }
+    }
+    pop() {
+      const top = this.items[0];
+      const last = this.items.pop();
+      if (this.items.length > 0) {
+        this.items[0] = last;
+        let i = 0;
+        for (;;) {
+          const l = 2 * i + 1, r = 2 * i + 2;
+          let smallest = i;
+          if (l < this.items.length && this.items[l][0] < this.items[smallest][0]) smallest = l;
+          if (r < this.items.length && this.items[r][0] < this.items[smallest][0]) smallest = r;
+          if (smallest === i) break;
+          [this.items[smallest], this.items[i]] = [this.items[i], this.items[smallest]];
+          i = smallest;
+        }
+      }
+      return top;
+    }
+  }
+  function shortestPath(graph, startKey, endKey, weightFn) {
+    const dist = new Map([[startKey, 0]]);
+    const prevEdge = new Map();
+    const visited = new Set();
+    const heap = new MinHeap();
+    heap.push(0, startKey);
+    while (heap.size > 0) {
+      const [d, key] = heap.pop();
+      if (visited.has(key)) continue;
+      visited.add(key);
+      if (key === endKey) break;
+      for (const edge of graph.adjacency.get(key) ?? []) {
+        if (visited.has(edge.to)) continue;
+        const newDist = d + weightFn(edge);
+        if (newDist < (dist.get(edge.to) ?? Infinity)) {
+          dist.set(edge.to, newDist);
+          prevEdge.set(edge.to, { fromKey: key, edge });
+          heap.push(newDist, edge.to);
+        }
+      }
+    }
+    if (!dist.has(endKey)) return null;
+    const edges = [];
+    let cur = endKey;
+    while (cur !== startKey) {
+      const step = prevEdge.get(cur);
+      if (!step) return null;
+      edges.unshift(step.edge);
+      cur = step.fromKey;
+    }
+    const distanceM = edges.reduce((sum, e) => sum + e.distanceM, 0);
+    return { edges, distanceM };
+  }
+
+  const CELL_SIZE_DEG = 0.0005;
+  function cellKey(lon, lat) { return `${Math.floor(lon / CELL_SIZE_DEG)},${Math.floor(lat / CELL_SIZE_DEG)}`; }
+  class ShadowGrid {
+    constructor() { this.cells = new Map(); }
+    insert(polygon) {
+      const [minX, minY, maxX, maxY] = turf.bbox(polygon);
+      const minCol = Math.floor(minX / CELL_SIZE_DEG), maxCol = Math.floor(maxX / CELL_SIZE_DEG);
+      const minRow = Math.floor(minY / CELL_SIZE_DEG), maxRow = Math.floor(maxY / CELL_SIZE_DEG);
+      for (let col = minCol; col <= maxCol; col++) {
+        for (let row = minRow; row <= maxRow; row++) {
+          const key = `${col},${row}`;
+          if (!this.cells.has(key)) this.cells.set(key, []);
+          this.cells.get(key).push(polygon);
+        }
+      }
+    }
+    candidatesFor(lon, lat) { return this.cells.get(cellKey(lon, lat)) ?? []; }
+  }
+  const FOOTPRINT_STRUCTURE_KEYS = ['buildings', 'footbridges', 'bridges', 'noiseBarriers'];
+  class ShadeIndex {
+    constructor(structures, date, refPoint) {
+      this.sunPos = getSunPosition(date, refPoint[1], refPoint[0]);
+      this.grid = new ShadowGrid();
+      if (this.sunPos.isDaylight) {
+        for (const key of FOOTPRINT_STRUCTURE_KEYS) {
+          for (const f of structures[key]?.features ?? []) {
+            const poly = buildingShadowPolygon(f, f.properties.heightM, this.sunPos);
+            if (poly) this.grid.insert(poly);
+          }
+        }
+      }
+    }
+    isShaded([lon, lat]) {
+      if (!this.sunPos.isDaylight) return true;
+      const point = turf.point([lon, lat]);
+      for (const polygon of this.grid.candidatesFor(lon, lat)) {
+        if (turf.booleanPointInPolygon(point, polygon)) return true;
+      }
+      return false;
+    }
+  }
+
+  const WALKING_SPEED_MPS = 1.25;
+  const STEP_LENGTH_M = 0.7;
+  const SUNNY_PENALTY = 3;
+  const STEEP_GRADIENT_THRESHOLD = 0.15;
+  function summarizeRoute(result, shadeIndex) {
+    if (!result) return null;
+    let shadedM = 0, gradientWeightedSum = 0, gradientWeightedM = 0, maxGradient = 0;
+    const segments = result.edges.map((edge) => {
+      const shaded = shadeIndex.isShaded(edge.midpoint);
+      if (shaded) shadedM += edge.distanceM;
+      if (typeof edge.gradient === 'number') {
+        gradientWeightedSum += edge.gradient * edge.distanceM;
+        gradientWeightedM += edge.distanceM;
+        maxGradient = Math.max(maxGradient, edge.gradient);
+      }
+      return { coords: edge.coords, shaded };
+    });
+    const distanceM = result.distanceM;
+    return {
+      distanceM: Math.round(distanceM),
+      timeMin: Math.round((distanceM / WALKING_SPEED_MPS / 60) * 10) / 10,
+      steps: Math.round(distanceM / STEP_LENGTH_M),
+      shadePercent: distanceM > 0 ? Math.round((shadedM / distanceM) * 100) : 0,
+      hasSteepSection: maxGradient >= STEEP_GRADIENT_THRESHOLD,
+      segments,
+    };
+  }
+  function buildRoutes(graph, shadeIndex, fromPoint, toPoint) {
+    const startKey = nearestNode(graph, fromPoint);
+    const endKey = nearestNode(graph, toPoint);
+    if (!startKey || !endKey) return null;
+    const fastest = shortestPath(graph, startKey, endKey, (edge) => edge.distanceM);
+    const shadiest = shortestPath(graph, startKey, endKey, (edge) => {
+      const shaded = shadeIndex.isShaded(edge.midpoint);
+      return edge.distanceM * (shaded ? 1 : SUNNY_PENALTY);
+    });
+    return { fastest: summarizeRoute(fastest, shadeIndex), shadiest: summarizeRoute(shadiest, shadeIndex) };
+  }
+
+  // ---------------------------------------------------------------------
+  // Direct-from-browser fetchers for the same keyless CSDI/HKO/KMB/ALS
+  // endpoints the backend used to proxy -- all confirmed CORS-open.
+  // ---------------------------------------------------------------------
+  async function fetchJson(url, opts, timeoutMs) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs || 15000);
+    try {
+      const res = await fetch(url, { ...(opts || {}), signal: ctrl.signal });
+      if (!res.ok) { const err = new Error(`${url} failed: ${res.status}`); err.status = res.status; throw err; }
+      return await res.json();
+    } finally { clearTimeout(t); }
+  }
+
+  // Tried a concurrency cap + retry-with-backoff here (matching the full
+  // app's backend, which needs exactly that against this same WFS service).
+  // In this browser-direct setup it backfired: a fresh viewport fires many
+  // tiles x 5 CSDI sources, and under sustained load a chunk of requests
+  // come back as bare failures even though the identical request succeeds
+  // fine in isolation -- and layering retries on top just added more
+  // requests to an already-strained window without actually fixing
+  // anything, measurably making route computation slower and less reliable
+  // in testing than doing nothing extra at all. So: a single plain attempt
+  // per request, no throttling, no retry -- whatever tiles fail just come
+  // back as an empty FeatureCollection for that one source/tile (see
+  // Promise.allSettled below), same graceful-degradation shape the full
+  // app's backend already relies on. This page has no shared server-side
+  // cache the way that backend does, so heavy/fast panning can still
+  // occasionally leave a visible gap in rendered buildings/routes -- an
+  // inherent trade-off of talking to this WFS service straight from the
+  // browser instead of through one shared backend connection.
+  async function fetchCsdiJson(url) {
+    return fetchJson(url, undefined, 12000);
+  }
+
+  const GAP_CLOSING_BUFFER_KM = 0.001;
+  async function fetchBuildingsInBbox([south, west, north, east]) {
+    const all = [];
+    let startIndex = 0;
+    for (;;) {
+      const params = new URLSearchParams({ service: 'WFS', version: '2.0.0', request: 'GetFeature', typename: 'csdi:Building', outputFormat: 'GeoJSON', srsname: 'EPSG:4326', bbox: `${south},${west},${north},${east}`, count: '1000', startIndex: String(startIndex) });
+      // A tile is rarely dense enough to need a 2nd page at this tile size,
+      // but if a later page fails, keep whatever pages already succeeded
+      // instead of losing the whole tile's buildings over one bad page.
+      let data;
+      try { data = await fetchCsdiJson(`${CSDI_BUILDING_URL}?${params}`); } catch { break; }
+      const page = data.features ?? [];
+      all.push(...page);
+      if (page.length < 1000) break;
+      startIndex += 1000;
+    }
+    const features = all.filter((f) => f.geometry).map((raw) => {
+      const p = raw.properties;
+      const baseHeight = Number(p.BaseHeight ?? 0), topHeight = Number(p.TopHeight ?? 0);
+      const feature = { type: 'Feature', properties: { id: p.BuildingID ?? p.OBJECTID, heightM: Math.max(0, topHeight - baseHeight) }, geometry: raw.geometry };
+      try { const buffered = turf.buffer(feature, GAP_CLOSING_BUFFER_KM, { units: 'kilometers' }); if (buffered) feature.geometry = buffered.geometry; } catch {}
+      return feature;
+    }).filter((f) => f.properties.heightM > 0);
+    return { type: 'FeatureCollection', features };
+  }
+
+  async function fetchFootwaysInBbox([south, west, north, east]) {
+    const all = [];
+    let startIndex = 0;
+    for (;;) {
+      const params = new URLSearchParams({ service: 'WFS', version: '2.0.0', request: 'GetFeature', typename: 'csdi:PedestrianRoute', outputFormat: 'GeoJSON', srsname: 'EPSG:4326', bbox: `${south},${west},${north},${east}`, count: '1000', startIndex: String(startIndex) });
+      let data;
+      try { data = await fetchCsdiJson(`${CSDI_PEDESTRIAN_URL}?${params}`); } catch { break; }
+      const page = data.features ?? [];
+      all.push(...page);
+      if (page.length < 1000) break;
+      startIndex += 1000;
+    }
+    const features = all.filter((f) => f.geometry).flatMap((raw) => {
+      const p = raw.properties;
+      const properties = { gradient: typeof p.Gradient === 'number' ? Math.abs(p.Gradient) : null };
+      const lines = raw.geometry.type === 'MultiLineString' ? raw.geometry.coordinates : [raw.geometry.coordinates];
+      return lines.filter((c) => c.length >= 2).map((coords) => ({ type: 'Feature', properties, geometry: { type: 'LineString', coordinates: coords } }));
+    });
+    return { type: 'FeatureCollection', features };
+  }
+
+  function simpleStructureFetcher(url, typename, assumedHeightM, buffer) {
+    return async function ([south, west, north, east]) {
+      const params = new URLSearchParams({ service: 'WFS', version: '2.0.0', request: 'GetFeature', typename, outputFormat: 'GeoJSON', srsname: 'EPSG:4326', bbox: `${south},${west},${north},${east}` });
+      const data = await fetchCsdiJson(`${url}?${params}`);
+      const features = (data.features ?? []).filter((f) => f.geometry).map((raw) => {
+        let geometry = raw.geometry;
+        if (buffer) {
+          const wall = turf.buffer({ type: 'Feature', properties: {}, geometry }, buffer, { units: 'kilometers' });
+          if (!wall) return null;
+          geometry = wall.geometry;
+        }
+        return { type: 'Feature', properties: { id: raw.properties.STR_NO ?? raw.properties.OBJECTID, heightM: assumedHeightM }, geometry };
+      }).filter(Boolean);
+      return { type: 'FeatureCollection', features };
+    };
+  }
+  const fetchFootbridgesInBbox = simpleStructureFetcher(CSDI_FOOTBRIDGE_URL, 'csdi:STR_FB', 5.5, null);
+  const fetchBridgesInBbox = simpleStructureFetcher(CSDI_BRIDGE_URL, 'csdi:STR_STRUCT', 7, null);
+  const fetchNoiseBarriersInBbox = simpleStructureFetcher(CSDI_NOISE_BARRIER_URL, 'csdi:STR_NB', 4, 0.0003);
+
+  let cachedMask = null;
+  async function getHkOutsideMask() {
+    if (cachedMask) return cachedMask;
+    const params = new URLSearchParams({ service: 'WFS', version: '2.0.0', request: 'GetFeature', typename: 'csdi:DCD', outputFormat: 'GeoJSON', srsname: 'EPSG:4326' });
+    const data = await fetchCsdiJson(`${CSDI_DISTRICT_URL}?${params}`);
+    const combined = turf.combine({ type: 'FeatureCollection', features: data.features ?? [] });
+    const territory = combined.features[0];
+    const simplified = turf.simplify(territory, { tolerance: 0.0007, highQuality: false });
+    cachedMask = turf.mask(simplified);
+    return cachedMask;
+  }
+
+  let cachedStops = null;
+  async function getAllStops() {
+    if (!cachedStops) {
+      cachedStops = fetchJson(KMB_STOP_URL).then((body) => (body.data ?? []).map((s) => ({ id: s.stop, nameEn: s.name_en, nameTc: s.name_tc, lon: Number(s.long), lat: Number(s.lat) })));
+    }
+    return cachedStops;
+  }
+  let cachedRoutes = null;
+  async function getAllRoutes() {
+    if (!cachedRoutes) {
+      cachedRoutes = fetchJson(KMB_ROUTE_URL).then((body) => (body.data ?? []).map((r) => ({ route: r.route, bound: r.bound, serviceType: r.service_type, origTc: r.orig_tc, destTc: r.dest_tc })));
+    }
+    return cachedRoutes;
+  }
+  async function searchBusRoutes(query) {
+    const routes = await getAllRoutes();
+    const normalized = query.trim().toUpperCase();
+    return routes.filter((r) => r.route === normalized);
+  }
+  async function getRouteStopSequence(route, bound, serviceType) {
+    const direction = BOUND_TO_DIRECTION[bound];
+    const body = await fetchJson(`${KMB_ROUTE_STOP_URL}/${encodeURIComponent(route)}/${direction}/${encodeURIComponent(serviceType)}`);
+    const sequence = body.data ?? [];
+    const stops = await getAllStops();
+    const byId = new Map(stops.map((s) => [s.id, s]));
+    return sequence.map((s) => {
+      const stop = byId.get(s.stop);
+      if (!stop) return null;
+      return { seq: Number(s.seq), nameTc: stop.nameTc, lon: stop.lon, lat: stop.lat };
+    }).filter(Boolean);
+  }
+
+  function joinParts(parts, sep) { const j = parts.filter(Boolean).join(sep); return j || null; }
+  function formatChinese(p) {
+    if (!p) return null;
+    const name = p.BuildingName || p.ChiEstate?.EstateName;
+    const street = p.ChiStreet;
+    const streetPart = street?.StreetName ? street.StreetName + (street.BuildingNoFrom ? `${street.BuildingNoFrom}號` : '') : null;
+    return joinParts([name, streetPart, p.ChiDistrict?.DcDistrict], '，');
+  }
+  function formatEnglish(p) {
+    if (!p) return null;
+    const name = p.BuildingName || p.EngEstate?.EstateName;
+    const street = p.EngStreet;
+    const streetPart = street?.StreetName ? joinParts([street.BuildingNoFrom, street.StreetName], ' ') : null;
+    return joinParts([name, streetPart, p.EngDistrict?.DcDistrict], ', ');
+  }
+  async function searchAddress(query) {
+    const q = String(query ?? '').trim();
+    if (q.length < MIN_GEOCODE_QUERY_LENGTH) return [];
+    const params = new URLSearchParams({ q, n: '8' });
+    const data = await fetchJson(`${ALS_URL}?${params}`, { headers: { Accept: 'application/json' } }, 6000).catch(() => null);
+    if (!data) return [];
+    const results = [];
+    for (const s of data.SuggestedAddress ?? []) {
+      const premises = s.Address?.PremisesAddress;
+      const geo = premises?.GeospatialInformation;
+      if (!geo) continue;
+      const lat = Number(geo.Latitude), lon = Number(geo.Longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      const labelTc = formatChinese(premises.ChiPremisesAddress);
+      const labelEn = formatEnglish(premises.EngPremisesAddress);
+      if (!labelTc && !labelEn) continue;
+      results.push({ label: labelTc || labelEn, lon, lat });
+    }
+    return results;
+  }
+
+  async function fetchWeather() {
+    const r = await fetchJson(`${HKO_WEATHER_URL}?dataType=rhrread&lang=tc`);
+    const uv = r.uvindex?.data?.[0] ?? null;
+    const hkoTemp = r.temperature?.data?.find((t) => t.place === '香港天文台') ?? r.temperature?.data?.[0] ?? null;
+    const humidity = r.humidity?.data?.[0] ?? null;
+    let workHeatWarning = null;
+    try {
+      const hsww = (await fetchJson(`${HKO_HSWW_URL}?lang=tc`))?.hsww;
+      if (hsww?.desc) workHeatWarning = { level: hsww.warningLevel ?? null, desc: hsww.desc };
+    } catch {}
+    return {
+      temperatureC: hkoTemp?.value ?? null,
+      humidityPercent: humidity?.value ?? null,
+      uv: { value: uv?.value ?? null, description: uv?.desc ?? null },
+      warningMessage: Array.isArray(r.warningMessage) ? (r.warningMessage.join(' ') || null) : (r.warningMessage || null),
+      workHeatWarning,
+    };
+  }
+
+  // ---------------------------------------------------------------------
+  // Tile cache (in-memory, mirrors backend/src/tiles.js's grid bucketing)
+  // ---------------------------------------------------------------------
+  const SOURCES = [
+    { key: 'buildings', fetch: fetchBuildingsInBbox },
+    { key: 'footways', fetch: fetchFootwaysInBbox },
+    { key: 'footbridges', fetch: fetchFootbridgesInBbox },
+    { key: 'bridges', fetch: fetchBridgesInBbox },
+    { key: 'noiseBarriers', fetch: fetchNoiseBarriersInBbox },
+  ];
+  const tileCache = new Map();
+  const tileInFlight = new Map();
+  function tileBbox(col, row) { const w = col * TILE_SIZE_DEG, s = row * TILE_SIZE_DEG; return [s, w, s + TILE_SIZE_DEG, w + TILE_SIZE_DEG]; }
+  function tileKeysForBbox([south, west, north, east]) {
+    const minCol = Math.floor(west / TILE_SIZE_DEG), maxCol = Math.floor(east / TILE_SIZE_DEG);
+    const minRow = Math.floor(south / TILE_SIZE_DEG), maxRow = Math.floor(north / TILE_SIZE_DEG);
+    const keys = [];
+    for (let col = minCol; col <= maxCol; col++) for (let row = minRow; row <= maxRow; row++) keys.push(`${col},${row}`);
+    return keys;
+  }
+  // Pre-warmed static tiles (see scripts/warm-hk-tiles.mjs +
+  // scripts/sync-standalone-tiles.mjs, refreshed monthly) live next to this
+  // HTML file as plain JSON -- same col_row.json naming and shape as the
+  // full app's backend disk cache, so a warmed tile here is served with
+  // zero CSDI calls at all: no rate-limit exposure, no network round-trip.
+  // A 404 (tile not warmed yet, e.g. just-built areas or a stale deploy)
+  // falls back to the live per-source WFS fetch exactly as before.
+  async function fetchStaticTile(key) {
+    try {
+      const res = await fetch(`tiles/${key.replace(',', '_')}.json`);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }
+  async function ensureTile(key) {
+    if (tileCache.has(key)) return tileCache.get(key);
+    if (tileInFlight.has(key)) return tileInFlight.get(key);
+    const [col, row] = key.split(',').map(Number);
+    const bbox = tileBbox(col, row);
+    const promise = (async () => {
+      const staticData = await fetchStaticTile(key);
+      if (staticData) return { data: staticData, complete: true };
+      const results = await Promise.allSettled(SOURCES.map((s) => s.fetch(bbox)));
+      const complete = results.every((r) => r.status === 'fulfilled');
+      const data = {};
+      SOURCES.forEach((s, i) => { data[s.key] = results[i].status === 'fulfilled' ? results[i].value : EMPTY_FC; });
+      return { data, complete };
+    })().then(({ data, complete }) => {
+      tileInFlight.delete(key);
+      if (complete) tileCache.set(key, data);
+      return data;
+    });
+    tileInFlight.set(key, promise);
+    return promise;
+  }
+  function mergeFC(collections) { return { type: 'FeatureCollection', features: collections.flatMap((fc) => fc.features) }; }
+  async function loadArea(bbox) {
+    const keys = tileKeysForBbox(bbox);
+    if (keys.length > MAX_TILES_PER_REQUEST) { const err = new Error('範圍太大，請放大地圖後再試'); err.code = 'AREA_TOO_LARGE'; throw err; }
+    const settled = await Promise.allSettled(keys.map(ensureTile));
+    const tiles = settled.map((r) => (r.status === 'fulfilled' ? r.value : {}));
+    const result = {};
+    for (const s of SOURCES) result[s.key] = mergeFC(tiles.map((t) => t[s.key] ?? EMPTY_FC));
+    return result;
+  }
+
+  // ---------------------------------------------------------------------
+  // UI state + map setup
+  // ---------------------------------------------------------------------
+  const state = {
+    fromPoint: null, toPoint: null,
+    fromMarker: null, toMarker: null,
+    routeData: null,
+    busStopMarkers: [],
+    liveShadowsOn: true,
+    viewportData: { buildings: EMPTY_FC, footbridges: EMPTY_FC, bridges: EMPTY_FC, noiseBarriers: EMPTY_FC },
+    lastFetchedSignature: null,
+  };
+
+  function el(id) { return document.getElementById(id); }
+
+  function showToast(kind, msg) {
+    const wrap = kind === 'error' ? el('topPanels') : el('topPanels');
+    const t = document.createElement('div');
+    t.className = 'panel toast' + (kind === 'error' ? ' error' : '');
+    t.style.flexBasis = '100%';
+    t.textContent = msg;
+    wrap.appendChild(t);
+    setTimeout(() => t.remove(), kind === 'error' ? 5000 : 2500);
+  }
+
+  const map = new maplibregl.Map({
+    container: 'map',
+    style: MAP_STYLE,
+    center: INITIAL_CENTER,
+    zoom: INITIAL_ZOOM,
+    pitch: 65,
+    maxPitch: 85,
+    touchPitch: true,
+    antialias: !window.matchMedia('(pointer: coarse)').matches,
+  });
+  map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+  // Safety net: don't let the overlay block the UI forever if the map style
+  // or first data fetch never resolves (e.g. flaky network on first load).
+  setTimeout(hideLoadingOverlay, 20000);
+
+  map.on('load', () => {
+    map.addSource('terrain-dem', { type: 'raster-dem', tiles: ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'], tileSize: 256, encoding: 'terrarium', maxzoom: 15 });
+    map.setTerrain({ source: 'terrain-dem', exaggeration: 1.3 });
+
+    map.addSource('hk-mask', { type: 'geojson', data: EMPTY_FC });
+    map.addLayer({ id: 'hk-mask-layer', type: 'fill', source: 'hk-mask', paint: { 'fill-color': '#0f172a', 'fill-opacity': 1 } });
+    getHkOutsideMask().then((mask) => map.getSource('hk-mask').setData(mask)).catch(() => {});
+
+    map.setLight({ anchor: 'viewport', color: '#ffffff', intensity: 0.5, position: [1.5, 90, 45] });
+
+    for (const s of STRUCTURE_LAYERS) {
+      map.addSource(s.key, { type: 'geojson', data: EMPTY_FC });
+      map.addLayer({ id: s.key + '-fill', type: 'fill-extrusion', source: s.key, paint: { 'fill-extrusion-color': s.color, 'fill-extrusion-height': ['get', 'heightM'], 'fill-extrusion-base': s.base, 'fill-extrusion-opacity': 1 } });
+    }
+
+    map.addSource('live-shadows', { type: 'geojson', data: EMPTY_FC });
+    map.addLayer({ id: 'live-shadows-layer', type: 'fill', source: 'live-shadows', paint: { 'fill-color': '#0f172a', 'fill-opacity': 0.35 } });
+
+    map.addSource('route-fastest', { type: 'geojson', data: EMPTY_FC });
+    map.addLayer({ id: 'route-fastest-line', type: 'line', source: 'route-fastest', paint: { 'line-color': '#3b82f6', 'line-width': 5, 'line-opacity': 0.85 }, layout: { 'line-cap': 'round' } });
+    map.addSource('route-shadiest', { type: 'geojson', data: EMPTY_FC });
+    map.addLayer({ id: 'route-shadiest-line', type: 'line', source: 'route-shadiest', paint: { 'line-color': '#22c55e', 'line-width': 5, 'line-opacity': 0.85 }, layout: { 'line-cap': 'round' } });
+
+    map.addSource('bus-route-stops', { type: 'geojson', data: EMPTY_FC });
+    map.addLayer({ id: 'bus-route-line', type: 'line', source: 'bus-route-stops', paint: { 'line-color': '#f59e0b', 'line-width': 3, 'line-dasharray': [2, 1] } });
+    map.addLayer({ id: 'bus-route-stops-circle', type: 'circle', source: 'bus-route-stops', paint: { 'circle-radius': 6, 'circle-color': '#ffffff', 'circle-stroke-color': '#dc2626', 'circle-stroke-width': 2 } });
+    map.addLayer({ id: 'bus-route-stops-shade-dot', type: 'circle', source: 'bus-route-stops', paint: { 'circle-radius': 2.5, 'circle-color': ['case', ['get', 'shaded'], '#16a34a', '#f59e0b'] } });
+
+    onMapReady();
+  });
+
+  function tileGridSignature(bounds) {
+    const minCol = Math.floor(bounds.getWest() / TILE_SIZE_DEG), maxCol = Math.floor(bounds.getEast() / TILE_SIZE_DEG);
+    const minRow = Math.floor(bounds.getSouth() / TILE_SIZE_DEG), maxRow = Math.floor(bounds.getNorth() / TILE_SIZE_DEG);
+    return `${minCol},${maxCol},${minRow},${maxRow}`;
+  }
+
+  let viewportFetchTimer = null;
+  function scheduleViewportFetch() {
+    clearTimeout(viewportFetchTimer);
+    viewportFetchTimer = setTimeout(loadViewport, VIEWPORT_FETCH_DEBOUNCE_MS);
+  }
+  async function loadViewport() {
+    const bounds = map.getBounds();
+    const sig = tileGridSignature(bounds);
+    if (sig === state.lastFetchedSignature) return;
+    const bbox = [bounds.getSouth(), bounds.getWest(), bounds.getNorth(), bounds.getEast()];
+    try {
+      const data = await loadArea(bbox);
+      state.lastFetchedSignature = sig;
+      state.viewportData = { buildings: data.buildings, footbridges: data.footbridges, bridges: data.bridges, noiseBarriers: data.noiseBarriers };
+      for (const s of STRUCTURE_LAYERS) map.getSource(s.key)?.setData(state.viewportData[s.key] ?? EMPTY_FC);
+      refreshLiveShadows();
+    } catch (err) {
+      if (err.code !== 'AREA_TOO_LARGE') console.error(err);
+    }
+  }
+
+  function computeLiveShadows(viewportData, date) {
+    const sunPos = getSunPosition(date, INITIAL_CENTER[1], INITIAL_CENTER[0]);
+    const features = [];
+    if (sunPos.isDaylight) {
+      for (const s of STRUCTURE_LAYERS) {
+        for (const f of viewportData[s.key]?.features ?? []) {
+          const poly = buildingShadowPolygon(f, f.properties.heightM, sunPos);
+          if (poly) features.push(poly);
+        }
+      }
+    }
+    return { fc: { type: 'FeatureCollection', features }, sunPos };
+  }
+
+  function refreshLiveShadows() {
+    if (!map.getSource('live-shadows')) return;
+    const { fc, sunPos } = computeLiveShadows(state.viewportData, new Date());
+    map.getSource('live-shadows').setData(state.liveShadowsOn ? fc : EMPTY_FC);
+    const isNight = !sunPos.isDaylight;
+    map.setPaintProperty('carto-base', 'raster-brightness-max', isNight ? 0.35 : 1);
+    map.setPaintProperty('carto-base', 'raster-saturation', isNight ? -0.4 : 0);
+    map.setPaintProperty('carto-base', 'raster-contrast', isNight ? 0.15 : 0);
+    el('sunInfo').textContent = `太陽仰角 ${sunPos.altitudeDeg.toFixed(1)}° · 方位 ${sunPos.bearingDeg.toFixed(0)}°${isNight ? '（日落後）' : ''}`;
+    updateBusStopShading(fc);
+  }
+
+  function updateBusStopShading(shadowFc) {
+    const src = map.getSource('bus-route-stops');
+    if (!src || !state.currentBusStops) return;
+    const updated = { type: 'FeatureCollection', features: state.currentBusStops.map((f) => ({ ...f, properties: { ...f.properties, shaded: shadowFc.features.some((poly) => turf.booleanPointInPolygon(f, poly)) } })) };
+    src.setData(updated);
+  }
+
+  function hideLoadingOverlay() {
+    el('loadingOverlay')?.classList.add('hidden');
+  }
+
+  function onMapReady() {
+    loadViewport().finally(hideLoadingOverlay);
+    map.on('moveend', scheduleViewportFetch);
+    setInterval(refreshLiveShadows, LIVE_SHADOW_REFRESH_MS);
+  }
+
+  // --- point picking (tap-to-pick + address search + locate-me share this) ---
+  function markerFor(color) { return new maplibregl.Marker({ color }); }
+  function pickPoint(point) {
+    if (!state.fromPoint || (state.fromPoint && state.toPoint)) {
+      state.fromPoint = point; state.toPoint = null;
+      if (state.fromMarker) state.fromMarker.remove();
+      if (state.toMarker) { state.toMarker.remove(); state.toMarker = null; }
+      state.fromMarker = markerFor('#22c55e').setLngLat(point).addTo(map);
+      clearRoute();
+    } else {
+      state.toPoint = point;
+      state.toMarker = markerFor('#ef4444').setLngLat(point).addTo(map);
+      computeRoute();
+    }
+    updateClearButton();
+  }
+  map.on('click', (e) => pickPoint([e.lngLat.lng, e.lngLat.lat]));
+
+  function clearRoute() {
+    state.routeData = null;
+    map.getSource('route-fastest')?.setData(EMPTY_FC);
+    map.getSource('route-shadiest')?.setData(EMPTY_FC);
+    el('routesPanel').style.display = 'none';
+    el('routesPanel').innerHTML = '';
+  }
+  function clearAll() {
+    state.fromPoint = null; state.toPoint = null;
+    if (state.fromMarker) { state.fromMarker.remove(); state.fromMarker = null; }
+    if (state.toMarker) { state.toMarker.remove(); state.toMarker = null; }
+    clearRoute();
+    clearBusRoute();
+    updateClearButton();
+  }
+  function clearBusRoute() {
+    state.currentBusStops = null;
+    map.getSource('bus-route-stops')?.setData(EMPTY_FC);
+  }
+  function updateClearButton() {
+    const has = state.fromPoint || state.toPoint || state.routeData || state.currentBusStops;
+    let btn = el('clearAllBtn');
+    if (has && !btn) {
+      btn = document.createElement('button');
+      btn.id = 'clearAllBtn';
+      btn.className = 'btn clear-all-btn';
+      btn.textContent = '🗑️ 清除，只瀏覽地圖';
+      btn.onclick = clearAll;
+      el('routeTab').appendChild(btn);
+    } else if (!has && btn) {
+      btn.remove();
+    }
+  }
+
+  function bboxAround(fromPoint, toPoint, padding) {
+    const lons = [fromPoint[0], toPoint[0]], lats = [fromPoint[1], toPoint[1]];
+    return [Math.min(...lats) - padding, Math.min(...lons) - padding, Math.max(...lats) + padding, Math.max(...lons) + padding];
+  }
+  function segmentsToLineFeatures(segments) {
+    return segments.map((seg) => ({ type: 'Feature', properties: { shaded: seg.shaded }, geometry: { type: 'LineString', coordinates: seg.coords } }));
+  }
+  async function computeRoute() {
+    if (!state.fromPoint || !state.toPoint) return;
+    showToast('info', '正在計算路線…');
+    try {
+      const bbox = bboxAround(state.fromPoint, state.toPoint, ROUTE_BBOX_PADDING_DEG);
+      let structures = await loadArea(bbox);
+      // A route requested right after the page loads competes with that
+      // initial viewport's own big burst of tile fetches for the same CSDI
+      // service, which can leave this specific area's footways empty even
+      // though the same tiles would succeed fetched alone. ensureTile()
+      // doesn't cache failures, so a retry after the burst has had a moment
+      // to clear genuinely re-fetches (not just re-reads a stale empty
+      // result) -- worth one retry before telling the user no route exists.
+      if (structures.footways.features.length === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        structures = await loadArea(bbox);
+      }
+      const graph = buildGraph(structures.footways);
+      const shadeIndex = new ShadeIndex(structures, new Date(), HK_REFERENCE_POINT);
+      const result = buildRoutes(graph, shadeIndex, state.fromPoint, state.toPoint);
+      if (!result || (!result.fastest && !result.shadiest)) { showToast('error', '找不到路線，請選擇較接近行人路的位置'); return; }
+      state.routeData = result;
+      map.getSource('route-fastest').setData({ type: 'FeatureCollection', features: result.fastest ? segmentsToLineFeatures(result.fastest.segments) : [] });
+      map.getSource('route-shadiest').setData({ type: 'FeatureCollection', features: result.shadiest ? segmentsToLineFeatures(result.shadiest.segments) : [] });
+      renderRoutePanel(result);
+      updateClearButton();
+    } catch (err) {
+      showToast('error', err.code === 'AREA_TOO_LARGE' ? err.message : '路線計算失敗，請稍後再試');
+    }
+  }
+  function renderRoutePanel(result) {
+    const panel = el('routesPanel');
+    panel.style.display = 'flex';
+    panel.innerHTML = '';
+    const card = (title, cls, r) => {
+      if (!r) return '';
+      return `<div class="route-card ${cls}"><h3>${title}</h3><div class="stats">
+        <span>⏱️ ${r.timeMin} 分鐘</span><span>📏 ${r.distanceM} 米</span><span>👣 ${r.steps} 步</span>
+        <span>🌤️ 陰涼 ${r.shadePercent}%</span>${r.hasSteepSection ? '<span>⛰️ 斜路</span>' : ''}
+      </div></div>`;
+    };
+    panel.innerHTML = card('🌳 蔭涼路線', 'shadiest', result.shadiest) + card('⚡ 最快路線', 'fastest', result.fastest);
+  }
+
+  // --- locate-me ---
+  el('locateBtn').addEventListener('click', () => {
+    if (!navigator.geolocation) { showToast('error', '此瀏覽器不支援定位'); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { const p = [pos.coords.longitude, pos.coords.latitude]; map.flyTo({ center: p, zoom: 17 }); pickPoint(p); },
+      () => showToast('error', '無法取得你的位置，請檢查定位權限'),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  });
+  // auto-center (view only) on load
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => map.jumpTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 16 }),
+      () => {}, { timeout: 5000 }
+    );
+  }
+
+  // --- address search (from/to) ---
+  function wireAddressSearch(inputId, suggBoxId, onPick) {
+    const input = el(inputId), box = el(suggBoxId);
+    let timer = null, suppress = false;
+    input.addEventListener('input', () => {
+      if (suppress) { suppress = false; return; }
+      clearTimeout(timer);
+      const q = input.value;
+      if (q.trim().length < MIN_GEOCODE_QUERY_LENGTH) { box.style.display = 'none'; return; }
+      timer = setTimeout(async () => {
+        const results = await searchAddress(q);
+        if (results.length === 0) { box.style.display = 'none'; return; }
+        box.innerHTML = '';
+        for (const r of results) {
+          const item = document.createElement('div');
+          item.className = 'suggestion-item';
+          item.textContent = r.label;
+          item.onclick = () => {
+            suppress = true;
+            input.value = r.label;
+            box.style.display = 'none';
+            const p = [r.lon, r.lat];
+            map.flyTo({ center: p, zoom: 17 });
+            onPick(p);
+          };
+          box.appendChild(item);
+        }
+        box.style.display = 'block';
+      }, GEOCODE_DEBOUNCE_MS);
+    });
+    document.addEventListener('click', (e) => { if (!box.contains(e.target) && e.target !== input) box.style.display = 'none'; });
+  }
+  wireAddressSearch('fromInput', 'fromSuggestions', (p) => {
+    state.fromPoint = p; state.toPoint = null;
+    if (state.fromMarker) state.fromMarker.remove();
+    if (state.toMarker) { state.toMarker.remove(); state.toMarker = null; }
+    state.fromMarker = markerFor('#22c55e').setLngLat(p).addTo(map);
+    clearRoute(); updateClearButton();
+  });
+  wireAddressSearch('toInput', 'toSuggestions', (p) => {
+    state.toPoint = p;
+    if (state.toMarker) state.toMarker.remove();
+    state.toMarker = markerFor('#ef4444').setLngLat(p).addTo(map);
+    if (state.fromPoint) computeRoute();
+    updateClearButton();
+  });
+
+  // --- live shadow toggle ---
+  el('liveShadowToggle').addEventListener('change', (e) => { state.liveShadowsOn = e.target.checked; refreshLiveShadows(); });
+
+  // --- collapse toggle ---
+  el('collapseToggle').addEventListener('click', () => {
+    const body = el('instructionsBody');
+    const collapsed = body.style.display === 'none';
+    body.style.display = collapsed ? '' : 'none';
+    el('collapseToggle').textContent = collapsed ? '▲' : '▼';
+  });
+
+  // --- tabs ---
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      el('routeTab').style.display = btn.dataset.tab === 'route' ? '' : 'none';
+      el('busTab').style.display = btn.dataset.tab === 'bus' ? '' : 'none';
+    });
+  });
+
+  // --- bus route search ---
+  el('busSearchBtn').addEventListener('click', async () => {
+    const q = el('busRouteInput').value.trim();
+    if (!q) return;
+    el('busResults').innerHTML = '<p class="hint">搜尋中…</p>';
+    try {
+      const routes = await searchBusRoutes(q);
+      if (routes.length === 0) { el('busResults').innerHTML = '<p class="hint">找不到此路線</p>'; return; }
+      el('busResults').innerHTML = '';
+      for (const r of routes) {
+        const btn = document.createElement('button');
+        btn.className = 'bus-result';
+        btn.textContent = `${r.route} (${r.bound === 'O' ? '往' : '往'} ${r.destTc || r.destEn || ''}) ${r.origTc || ''} → ${r.destTc || ''}`;
+        btn.onclick = async () => {
+          try {
+            const stops = await getRouteStopSequence(r.route, r.bound, r.serviceType);
+            if (stops.length === 0) { showToast('error', '找不到此路線的車站'); return; }
+            const features = stops.map((s) => ({ type: 'Feature', properties: { nameTc: s.nameTc, shaded: false }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } }));
+            state.currentBusStops = features;
+            map.getSource('bus-route-stops').setData({ type: 'FeatureCollection', features });
+            const line = turf.lineString(stops.map((s) => [s.lon, s.lat]));
+            map.getSource('bus-route-stops').setData({ type: 'FeatureCollection', features: [...features, { type: 'Feature', properties: {}, geometry: line.geometry }] });
+            const bounds = stops.reduce((b, s) => b.extend([s.lon, s.lat]), new maplibregl.LngLatBounds([stops[0].lon, stops[0].lat], [stops[0].lon, stops[0].lat]));
+            map.fitBounds(bounds, { padding: 60 });
+            refreshLiveShadows();
+            updateClearButton();
+          } catch { showToast('error', '載入車站資料失敗'); }
+        };
+        el('busResults').appendChild(btn);
+      }
+    } catch { el('busResults').innerHTML = '<p class="hint">搜尋失敗</p>'; }
+  });
+
+  // --- weather header ---
+  const dismissed = { warning: null, workHeat: null };
+  function workHeatKeyFor(w) { return w ? w.level + ':' + w.desc : ''; }
+  async function pollWeather() {
+    try {
+      const w = await fetchWeather();
+      const badges = el('weatherBadges');
+      badges.innerHTML = '';
+      if (w.temperatureC != null) { const b = document.createElement('span'); b.className = 'weather-badge'; b.textContent = `🌡️ ${w.temperatureC}°C`; badges.appendChild(b); }
+      if (w.uv.value != null) { const b = document.createElement('span'); b.className = 'weather-badge uv-badge'; b.textContent = `☀️ UV ${w.uv.value}`; badges.appendChild(b); }
+      if (w.warningMessage) { const b = document.createElement('span'); b.className = 'weather-badge warning-badge'; b.textContent = '⚠️ 天氣警告'; badges.appendChild(b); }
+      if (w.workHeatWarning) { const b = document.createElement('span'); b.className = `weather-badge work-heat-badge ${w.workHeatWarning.level === 'RED' ? 'red' : 'amber'}`; b.textContent = '🔥 工作暑熱警告'; badges.appendChild(b); }
+
+      const banners = el('warningBanners');
+      banners.innerHTML = '';
+      if (w.warningMessage && w.warningMessage !== dismissed.warning) {
+        const btn = document.createElement('button');
+        btn.className = 'weather-warning';
+        btn.textContent = '⚠️ ' + w.warningMessage + '（點按關閉）';
+        btn.onclick = () => { dismissed.warning = w.warningMessage; btn.remove(); };
+        banners.appendChild(btn);
+      }
+      if (w.workHeatWarning && workHeatKeyFor(w.workHeatWarning) !== dismissed.workHeat) {
+        const btn = document.createElement('button');
+        btn.className = `work-heat-warning ${w.workHeatWarning.level === 'RED' ? 'red' : 'amber'}`;
+        btn.textContent = '🔥 ' + w.workHeatWarning.desc + '（點按關閉）';
+        btn.onclick = () => { dismissed.workHeat = workHeatKeyFor(w.workHeatWarning); btn.remove(); };
+        banners.appendChild(btn);
+      }
+    } catch (err) { console.error('weather fetch failed', err); }
+  }
+  pollWeather();
+  setInterval(pollWeather, 60000);
+})();
+</script>
+</body>
+</html>

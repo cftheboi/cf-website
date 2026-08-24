@@ -37,6 +37,18 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cfchan.hk/blog.html" />
   </url>
   <url>
+    <loc>https://cfchan.hk/apps.html</loc><lastmod>2026-08-13</lastmod>
+    <xhtml:link rel="alternate" hreflang="en-HK" href="https://cfchan.hk/apps.html" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant-HK" href="https://cfchan.hk/apps-zh.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cfchan.hk/apps.html" />
+  </url>
+  <url>
+    <loc>https://cfchan.hk/apps-zh.html</loc><lastmod>2026-08-13</lastmod>
+    <xhtml:link rel="alternate" hreflang="en-HK" href="https://cfchan.hk/apps.html" />
+    <xhtml:link rel="alternate" hreflang="zh-Hant-HK" href="https://cfchan.hk/apps-zh.html" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cfchan.hk/apps.html" />
+  </url>
+  <url>
     <loc>https://cfchan.hk/contact.html</loc><lastmod>2026-07-05</lastmod>
     <xhtml:link rel="alternate" hreflang="en-HK" href="https://cfchan.hk/contact.html" />
     <xhtml:link rel="alternate" hreflang="zh-Hant-HK" href="https://cfchan.hk/contact-zh.html" />
