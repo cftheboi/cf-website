@@ -215,19 +215,15 @@
   const MAP_STYLE = {
     version: 8,
     sources: {
-      carto: {
+      osm: {
         type: 'raster',
-        tiles: [
-          'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-          'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-          'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-          'https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-        ],
+        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
         tileSize: 256,
-        attribution: '© OpenStreetMap contributors © CARTO',
+        maxzoom: 19,
+        attribution: '© OpenStreetMap contributors',
       },
     },
-    layers: [{ id: 'carto-base', type: 'raster', source: 'carto' }],
+    layers: [{ id: 'osm-base', type: 'raster', source: 'osm' }],
   };
 
   // ---------------------------------------------------------------------
@@ -841,9 +837,9 @@
     const { fc, sunPos } = computeLiveShadows(state.viewportData, new Date());
     map.getSource('live-shadows').setData(state.liveShadowsOn ? fc : EMPTY_FC);
     const isNight = !sunPos.isDaylight;
-    map.setPaintProperty('carto-base', 'raster-brightness-max', isNight ? 0.35 : 1);
-    map.setPaintProperty('carto-base', 'raster-saturation', isNight ? -0.4 : 0);
-    map.setPaintProperty('carto-base', 'raster-contrast', isNight ? 0.15 : 0);
+    map.setPaintProperty('osm-base', 'raster-brightness-max', isNight ? 0.35 : 1);
+    map.setPaintProperty('osm-base', 'raster-saturation', isNight ? -0.4 : 0);
+    map.setPaintProperty('osm-base', 'raster-contrast', isNight ? 0.15 : 0);
     el('sunInfo').textContent = `太陽仰角 ${sunPos.altitudeDeg.toFixed(1)}° · 方位 ${sunPos.bearingDeg.toFixed(0)}°${isNight ? '（日落後）' : ''}`;
     updateBusStopShading(fc);
   }
