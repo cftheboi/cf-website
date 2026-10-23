@@ -12,6 +12,10 @@ const menuButton = document.querySelector('.menu-toggle');
     'about-zh.html': ['https://cfchan.hk/about.html', 'https://cfchan.hk/about-zh.html'],
     'blog.html': ['https://cfchan.hk/blog.html', 'https://cfchan.hk/blog-zh.html'],
     'blog-zh.html': ['https://cfchan.hk/blog.html', 'https://cfchan.hk/blog-zh.html'],
+    'projects.html': ['https://cfchan.hk/projects.html', 'https://cfchan.hk/projects-zh.html'],
+    'projects-zh.html': ['https://cfchan.hk/projects.html', 'https://cfchan.hk/projects-zh.html'],
+    'apps.html': ['https://cfchan.hk/apps.html', 'https://cfchan.hk/apps-zh.html'],
+    'apps-zh.html': ['https://cfchan.hk/apps.html', 'https://cfchan.hk/apps-zh.html'],
     'contact.html': ['https://cfchan.hk/contact.html', 'https://cfchan.hk/contact-zh.html'],
     'contact-zh.html': ['https://cfchan.hk/contact.html', 'https://cfchan.hk/contact-zh.html']
   };
@@ -35,10 +39,11 @@ const menuButton = document.querySelector('.menu-toggle');
       '@id': 'https://cfchan.hk/#person',
       name: 'Chan Chak Fung',
       alternateName: ['CF Chan', '陳澤鋒'],
+      jobTitle: ['Entrepreneur', 'Applied AI Practitioner', 'Technology Commentator', 'Low-Altitude Economy Practitioner'],
       url: 'https://cfchan.hk/',
       image: 'https://cfchan.hk/assets/portrait.jpeg',
       sameAs: ['https://cfchan.substack.com/'],
-      knowsAbout: ['Artificial Intelligence', 'Low-Altitude Economy', 'Drones', 'Entrepreneurship', 'Business Transformation', 'Technology Strategy'],
+      knowsAbout: ['Applied AI', 'AI Agents', 'AI Business Workflow', 'Emerging Technology', 'Low-Altitude Economy', 'Drones', 'Entrepreneurship', 'Business Transformation', 'Technology Strategy'],
       address: { '@type': 'PostalAddress', addressLocality: 'Hong Kong', addressCountry: 'HK' }
     });
     document.head.appendChild(schema);
@@ -60,8 +65,14 @@ const revealObserver = new IntersectionObserver((entries) => {
       revealObserver.unobserve(entry.target);
     }
   });
-}, { threshold: 0.12 });
+}, { threshold: 0, rootMargin: '0px 0px -8% 0px' });
 document.querySelectorAll('.reveal').forEach((element) => revealObserver.observe(element));
+// Safety net: never leave content hidden if the observer misses an element (e.g. restored scroll position, tall sections).
+window.addEventListener('load', () => setTimeout(() => {
+  document.querySelectorAll('.reveal:not(.visible)').forEach((el) => {
+    if (el.getBoundingClientRect().top < window.innerHeight) el.classList.add('visible');
+  });
+}, 1200));
 
 const snakeTimeline = document.querySelector('[data-snake-timeline]');
 if (snakeTimeline) {
@@ -246,42 +257,44 @@ function detectCategories(tags, text) {
   // Map Substack RSS <category> tags directly
   (tags || []).forEach(tag => {
     const tl = tag.toLowerCase();
-    if (/ai|machine.?learning|llm|gpt|automat/.test(tl))          cats.add('ai');
-    if (/drone|lae|low.?altitude|uav|unmanned/.test(tl))          cats.add('lae');
-    if (/entrepreneur|startup/.test(tl))                           cats.add('entrepreneurship');
-    if (/business|strategy|management/.test(tl))                   cats.add('business');
-    if (/social|society|philosophy|culture|education/.test(tl))    cats.add('social');
-    if (/tech|technology|software|digital|innovation/.test(tl))    cats.add('tech');
+    if (/drone|lae|low.?altitude|uav|unmanned/.test(tl))                        cats.add('lae');
+    if (/robot|vision|sensor|iot|inspection|autonom|hardware|embedded/.test(tl)) cats.add('real-world');
+    if (/ai|machine.?learning|llm|gpt|automat/.test(tl))                        cats.add('applied-ai');
+    if (/entrepreneur|startup|business|strategy|management|tech|technology|software|digital|innovation/.test(tl)) cats.add('tech-business');
+    if (/social|society|philosophy|culture|education/.test(tl))                 cats.add('future-society');
   });
 
-  // English patterns
-  if (/\b(ai|a\.i\.|artificial intelligence|llm|chatgpt|gpt|machine learning|automat\w*|generat\w*|generative|intelligent)\b/.test(t)) cats.add('ai');
-  if (/\b(low.altitude|lae|drone|uav|suas?|unmanned|airspace)\b/.test(t)) cats.add('lae');
-  if (/\b(entrepreneur\w*|startup|sales|growth|venture|gig economy|business development)\b/.test(t)) cats.add('entrepreneurship');
-  if (/\b(business|transform\w*|strateg\w*|management|consulting|corporate|enterprise|revenue)\b/.test(t)) cats.add('business');
-  if (/\b(social|society|philosoph\w*|culture|youth|community|future|human\w*|thinker\w*|education|critical|everyone|people|learn\w*|ethic\w*)\b/.test(t)) cats.add('social');
-  if (/\b(tech\w*|web3|blockchain|iot|bim|digital|innovation|apps?|software|platform|data|personal|own\w*)\b/.test(t)) cats.add('tech');
+  // Low-Altitude Economy — checked first so LAE posts aren't also bucketed as "AI in the Real World"
+  const isLae = /\b(low.altitude|lae|drone|uav|suas?|unmanned|airspace)\b/.test(t) || /低空經濟|無人機|飛行器|空域/.test(t);
+  if (isLae) cats.add('lae');
 
-  // Chinese patterns
-  if (/人工智能|機器學習|自動化|生成式?|大語言|語言模型|智能系統|ai能|ai可/.test(t)) cats.add('ai');
-  if (/低空經濟|無人機|飛行器|空域/.test(t)) cats.add('lae');
-  if (/創業|初創|企業家|商業模式|銷售/.test(t)) cats.add('entrepreneurship');
-  if (/商業|業務|策略|管理|諮詢|企業/.test(t)) cats.add('business');
-  if (/社會|未來|哲學|文化|教育|培養|思考者?|人類|每個人|時代|批判/.test(t)) cats.add('social');
-  if (/科技|技術|軟體|軟件|應用程式|數碼|數位|創新|平台|個人化?|app/.test(t)) cats.add('tech');
+  // AI in the Real World — physical/hardware application of AI (computer vision, robotics, IoT, inspection)
+  if (!isLae && (/\b(robot\w*|computer vision|sensor\w*|\biot\b|inspection|autonom\w*|physical\w*|hardware|hydraulic|embedded|camera\w*)\b/.test(t)
+      || /機器人|感測器|傳感器|物聯網|巡檢|自動駕駛|實體|硬件/.test(t))) cats.add('real-world');
 
-  return cats.size ? [...cats] : ['business'];
+  // Applied AI — business/software application of AI
+  if (/\b(ai|a\.i\.|artificial intelligence|llm|chatgpt|gpt|machine learning|automat\w*|generat\w*|generative|intelligent|workflow|adopt\w*|productiv\w*)\b/.test(t)
+      || /人工智能|機器學習|自動化|生成式?|大語言|語言模型|智能系統|ai能|ai可|工作流程|生產力/.test(t)) cats.add('applied-ai');
+
+  // Technology & Business — entrepreneurship, strategy, general technology/digital
+  if (/\b(entrepreneur\w*|startup|sales|growth|venture|gig economy|business development|business|transform\w*|strateg\w*|management|consulting|corporate|enterprise|revenue|tech\w*|web3|blockchain|bim|digital|innovation|apps?|software|platform|data|personal|own\w*)\b/.test(t)
+      || /創業|初創|企業家|商業模式|銷售|商業|業務|策略|管理|諮詢|企業|科技|技術|軟體|軟件|應用程式|數碼|數位|創新|平台|個人化?|app/.test(t)) cats.add('tech-business');
+
+  // Future Society — society, culture, ethics, future of work
+  if (/\b(social|society|philosoph\w*|culture|youth|community|future|human\w*|thinker\w*|education|critical|everyone|people|learn\w*|ethic\w*)\b/.test(t)
+      || /社會|未來|哲學|文化|教育|培養|思考者?|人類|每個人|時代|批判/.test(t)) cats.add('future-society');
+
+  return cats.size ? [...cats] : ['tech-business'];
 }
 
 function catVisual(cat) {
   return {
-    ai:              { cls: 'visual-ai',     label: 'AI',       display: 'ARTIFICIAL INTELLIGENCE' },
-    lae:             { cls: 'visual-lae',    label: 'HK\n低空', display: 'LOW ALTITUDE ECONOMY' },
-    entrepreneurship:{ cls: 'visual-sales',  label: '↗',        display: 'ENTREPRENEURSHIP' },
-    business:        { cls: 'visual-change', label: '→',        display: 'BUSINESS' },
-    social:          { cls: 'visual-social', label: '人',       display: 'SOCIAL' },
-    tech:            { cls: 'visual-tech',   label: '⌁',        display: 'TECHNOLOGY' },
-  }[cat] || { cls: 'visual-change', label: '→', display: 'BUSINESS' };
+    'applied-ai':     { cls: 'visual-ai',     label: 'AI',       display: 'APPLIED AI' },
+    'real-world':     { cls: 'visual-tech',   label: '⌁',        display: 'AI IN THE REAL WORLD' },
+    lae:              { cls: 'visual-lae',    label: 'HK\n低空', display: 'LOW ALTITUDE ECONOMY' },
+    'tech-business':  { cls: 'visual-change', label: '→',        display: 'TECHNOLOGY & BUSINESS' },
+    'future-society': { cls: 'visual-social', label: '人',       display: 'FUTURE SOCIETY' },
+  }[cat] || { cls: 'visual-change', label: '→', display: 'TECHNOLOGY & BUSINESS' };
 }
 
 // About page: collapsible accordion for sections after the bio
@@ -381,6 +394,66 @@ if (copyBtn) {
     });
   });
 }
+
+// Download disclaimer: links with [data-disclaimer] show a confirmation dialog before downloading.
+(function setupDownloadDisclaimer() {
+  const links = document.querySelectorAll('a[data-disclaimer]');
+  if (!links.length) return;
+
+  const zh = document.documentElement.lang.startsWith('zh');
+  const text = zh ? {
+    title: '免責聲明',
+    body: ['此程式為<strong>試用版應用程式</strong>，旨在展示 Vibe Coding（氛圍編程）的強大威力，僅供示範及試用。',
+           '程式按「現狀」提供，不附帶任何保證。下載及使用本程式所引致的任何損害或損失（包括但不限於電腦損壞、資料遺失或系統故障），陳澤鋒及本網站概不負責。',
+           '下載即表示你明白並同意自行承擔使用風險。'],
+    cancel: '取消',
+    accept: '我明白，繼續下載'
+  } : {
+    title: 'Disclaimer',
+    body: ['This is a <strong>trial app</strong> built to demonstrate the power of vibe coding. It is provided for demonstration and trial use only.',
+           'The software is provided "as is" without warranty of any kind. The author and this website accept no liability for any damage or loss — including but not limited to damage to your computer, loss of data or system failure — arising from downloading or using it.',
+           'By downloading, you acknowledge and accept that you use it at your own risk.'],
+    cancel: 'Cancel',
+    accept: 'I understand, download'
+  };
+
+  const dialog = document.createElement('dialog');
+  dialog.className = 'disclaimer-dialog';
+  dialog.setAttribute('aria-labelledby', 'disclaimer-title');
+  dialog.innerHTML = `<form method="dialog">
+    <h2 id="disclaimer-title">${text.title}</h2>
+    ${text.body.map((p) => `<p>${p}</p>`).join('')}
+    <div class="disclaimer-actions">
+      <button type="button" class="disclaimer-cancel">${text.cancel}</button>
+      <button type="button" class="disclaimer-accept">${text.accept}</button>
+    </div>
+  </form>`;
+  document.body.appendChild(dialog);
+
+  let pending = null;
+  links.forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      pending = link;
+      dialog.showModal();
+    });
+  });
+
+  dialog.querySelector('.disclaimer-cancel').addEventListener('click', () => dialog.close());
+  dialog.querySelector('.disclaimer-accept').addEventListener('click', () => {
+    const link = pending;
+    dialog.close();
+    if (!link) return;
+    const a = document.createElement('a');
+    a.href = link.href;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+  // Click on the backdrop closes the dialog.
+  dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+}());
 
 // Lightweight internal page transitions, including mobile and back navigation.
 (function setupPageTransitions() {

@@ -7,9 +7,11 @@
 /index.html  /  301!
 
 # Keep the existing .html URLs canonical.
-/about    /about.html    301!
-/blog     /blog.html     301!
-/contact  /contact.html  301!
+/about     /about.html     301!
+/blog      /blog.html      301!
+/projects  /projects.html  301!
+/apps      /apps.html      301!
+/contact   /contact.html   301!
 
 # Friendly 404 fallback while preserving a 404 status.
 /*  /  404
