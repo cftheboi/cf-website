@@ -195,6 +195,7 @@
   const CSDI_PEDESTRIAN_URL = 'https://portal.csdi.gov.hk/server/services/common/landsd_rcd_1637222018065_52265/MapServer/WFSServer';
   const CSDI_FOOTBRIDGE_URL = 'https://portal.csdi.gov.hk/server/services/common/hyd_rcd_1632360512481_74705/MapServer/WFSServer';
   const CSDI_BRIDGE_URL = 'https://portal.csdi.gov.hk/server/services/common/hyd_rcd_1632360050986_38630/MapServer/WFSServer';
+  const CSDI_WALKWAY_COVER_URL = 'https://portal.csdi.gov.hk/server/services/common/hyd_rcd_1632360364210_72608/MapServer/WFSServer';
   const CSDI_NOISE_BARRIER_URL = 'https://portal.csdi.gov.hk/server/services/common/hyd_rcd_1632360656336_40750/MapServer/WFSServer';
   const CSDI_DISTRICT_URL = 'https://portal.csdi.gov.hk/server/services/common/had_rcd_1634523272907_75218/MapServer/WFSServer';
   const HKO_WEATHER_URL = 'https://data.weather.gov.hk/weatherAPI/opendata/weather.php';
@@ -207,23 +208,31 @@
 
   const STRUCTURE_LAYERS = [
     { key: 'buildings', color: '#e6ded0', outlineColor: '#4b4638', base: 0 },
-    { key: 'footbridges', color: '#9aa1a8', outlineColor: '#5b6167', base: ['-', ['get', 'heightM'], 0.6] },
-    { key: 'bridges', color: '#8b8f99', outlineColor: '#454850', base: ['-', ['get', 'heightM'], 1] },
+    // Decks are ~2-2.5 m thick (not a hairline slab) and tinted so they stand
+    // out against the pale buildings and grey basemap.
+    { key: 'footbridges', color: '#e8833a', outlineColor: '#8a4513', base: ['-', ['get', 'heightM'], 2] },
+    { key: 'bridges', color: '#5b7fa6', outlineColor: '#2c4660', base: ['-', ['get', 'heightM'], 2.5] },
     { key: 'noiseBarriers', color: '#c7cdd0', outlineColor: '#5f6b6f', base: 0 },
+    // Pavement/walkway roofs: a thin canopy ~2.7-3.2 m up that casts shade.
+    { key: 'walkwayCovers', color: '#2fa39a', outlineColor: '#17615c', base: ['-', ['get', 'heightM'], 0.5] },
   ];
 
   const MAP_STYLE = {
     version: 8,
     sources: {
-      osm: {
+      carto: {
         type: 'raster',
-        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+        tiles: [
+          'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+          'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+          'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+          'https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        ],
         tileSize: 256,
-        maxzoom: 19,
-        attribution: '© OpenStreetMap contributors',
+        attribution: '© OpenStreetMap contributors © CARTO',
       },
     },
-    layers: [{ id: 'osm-base', type: 'raster', source: 'osm' }],
+    layers: [{ id: 'carto-base', type: 'raster', source: 'carto' }],
   };
 
   // ---------------------------------------------------------------------
@@ -388,7 +397,7 @@
     }
     candidatesFor(lon, lat) { return this.cells.get(cellKey(lon, lat)) ?? []; }
   }
-  const FOOTPRINT_STRUCTURE_KEYS = ['buildings', 'footbridges', 'bridges', 'noiseBarriers'];
+  const FOOTPRINT_STRUCTURE_KEYS = ['buildings', 'footbridges', 'bridges', 'noiseBarriers', 'walkwayCovers'];
   class ShadeIndex {
     constructor(structures, date, refPoint) {
       this.sunPos = getSunPosition(date, refPoint[1], refPoint[0]);
@@ -533,10 +542,24 @@
     return { type: 'FeatureCollection', features };
   }
 
+  // Unlike buildings/footways (which go through the plain single-attempt
+  // path above), the sparse structure layers are cheap requests, so they get
+  // a couple of backed-off retries and log what finally failed instead of
+  // silently turning into an empty layer.
+  const STRUCTURE_RETRIES = 2;
+  async function fetchStructureJson(url, typename, bbox) {
+    let lastErr;
+    for (let attempt = 0; attempt <= STRUCTURE_RETRIES; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * 2 ** (attempt - 1) + Math.random() * 200));
+      try { return await fetchCsdiJson(url); } catch (err) { lastErr = err; }
+    }
+    console.warn(`[hk-shadow] ${typename} bbox ${bbox.join(',')} failed after ${STRUCTURE_RETRIES + 1} attempts:`, lastErr);
+    throw lastErr;
+  }
   function simpleStructureFetcher(url, typename, assumedHeightM, buffer) {
     return async function ([south, west, north, east]) {
       const params = new URLSearchParams({ service: 'WFS', version: '2.0.0', request: 'GetFeature', typename, outputFormat: 'GeoJSON', srsname: 'EPSG:4326', bbox: `${south},${west},${north},${east}` });
-      const data = await fetchCsdiJson(`${url}?${params}`);
+      const data = await fetchStructureJson(`${url}?${params}`, typename, [south, west, north, east]);
       const features = (data.features ?? []).filter((f) => f.geometry).map((raw) => {
         let geometry = raw.geometry;
         if (buffer) {
@@ -551,7 +574,8 @@
   }
   const fetchFootbridgesInBbox = simpleStructureFetcher(CSDI_FOOTBRIDGE_URL, 'csdi:STR_FB', 5.5, null);
   const fetchBridgesInBbox = simpleStructureFetcher(CSDI_BRIDGE_URL, 'csdi:STR_STRUCT', 7, null);
-  const fetchNoiseBarriersInBbox = simpleStructureFetcher(CSDI_NOISE_BARRIER_URL, 'csdi:STR_NB', 4, 0.0003);
+  const fetchWalkwayCoversInBbox = simpleStructureFetcher(CSDI_WALKWAY_COVER_URL, 'csdi:STR_WALKWAY', 3.2, null);
+  const fetchNoiseBarriersInBbox =simpleStructureFetcher(CSDI_NOISE_BARRIER_URL, 'csdi:STR_NB', 4, 0.0003);
 
   let cachedMask = null;
   async function getHkOutsideMask() {
@@ -661,6 +685,7 @@
     { key: 'footbridges', fetch: fetchFootbridgesInBbox },
     { key: 'bridges', fetch: fetchBridgesInBbox },
     { key: 'noiseBarriers', fetch: fetchNoiseBarriersInBbox },
+    { key: 'walkwayCovers', fetch: fetchWalkwayCoversInBbox },
   ];
   const tileCache = new Map();
   const tileInFlight = new Map();
@@ -729,7 +754,7 @@
     routeData: null,
     busStopMarkers: [],
     liveShadowsOn: true,
-    viewportData: { buildings: EMPTY_FC, footbridges: EMPTY_FC, bridges: EMPTY_FC, noiseBarriers: EMPTY_FC },
+    viewportData: { buildings: EMPTY_FC, footbridges: EMPTY_FC, bridges: EMPTY_FC, noiseBarriers: EMPTY_FC, walkwayCovers: EMPTY_FC },
     lastFetchedSignature: null,
   };
 
@@ -810,7 +835,7 @@
     try {
       const data = await loadArea(bbox);
       state.lastFetchedSignature = sig;
-      state.viewportData = { buildings: data.buildings, footbridges: data.footbridges, bridges: data.bridges, noiseBarriers: data.noiseBarriers };
+      state.viewportData = { buildings: data.buildings, footbridges: data.footbridges, bridges: data.bridges, noiseBarriers: data.noiseBarriers, walkwayCovers: data.walkwayCovers };
       for (const s of STRUCTURE_LAYERS) map.getSource(s.key)?.setData(state.viewportData[s.key] ?? EMPTY_FC);
       refreshLiveShadows();
     } catch (err) {
@@ -837,9 +862,9 @@
     const { fc, sunPos } = computeLiveShadows(state.viewportData, new Date());
     map.getSource('live-shadows').setData(state.liveShadowsOn ? fc : EMPTY_FC);
     const isNight = !sunPos.isDaylight;
-    map.setPaintProperty('osm-base', 'raster-brightness-max', isNight ? 0.35 : 1);
-    map.setPaintProperty('osm-base', 'raster-saturation', isNight ? -0.4 : 0);
-    map.setPaintProperty('osm-base', 'raster-contrast', isNight ? 0.15 : 0);
+    map.setPaintProperty('carto-base', 'raster-brightness-max', isNight ? 0.35 : 1);
+    map.setPaintProperty('carto-base', 'raster-saturation', isNight ? -0.4 : 0);
+    map.setPaintProperty('carto-base', 'raster-contrast', isNight ? 0.15 : 0);
     el('sunInfo').textContent = `太陽仰角 ${sunPos.altitudeDeg.toFixed(1)}° · 方位 ${sunPos.bearingDeg.toFixed(0)}°${isNight ? '（日落後）' : ''}`;
     updateBusStopShading(fc);
   }

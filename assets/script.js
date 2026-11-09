@@ -5,19 +5,19 @@ const menuButton = document.querySelector('.menu-toggle');
 (function addDiscoveryMetadata() {
   const page = location.pathname.split('/').pop() || 'index.html';
   const pairs = {
-    'index.html': ['https://cfchan.hk/', 'https://cfchan.hk/home-zh.html'],
-    'home.html': ['https://cfchan.hk/', 'https://cfchan.hk/home-zh.html'],
-    'home-zh.html': ['https://cfchan.hk/', 'https://cfchan.hk/home-zh.html'],
-    'about.html': ['https://cfchan.hk/about.html', 'https://cfchan.hk/about-zh.html'],
-    'about-zh.html': ['https://cfchan.hk/about.html', 'https://cfchan.hk/about-zh.html'],
-    'blog.html': ['https://cfchan.hk/blog.html', 'https://cfchan.hk/blog-zh.html'],
-    'blog-zh.html': ['https://cfchan.hk/blog.html', 'https://cfchan.hk/blog-zh.html'],
-    'projects.html': ['https://cfchan.hk/projects.html', 'https://cfchan.hk/projects-zh.html'],
-    'projects-zh.html': ['https://cfchan.hk/projects.html', 'https://cfchan.hk/projects-zh.html'],
-    'apps.html': ['https://cfchan.hk/apps.html', 'https://cfchan.hk/apps-zh.html'],
-    'apps-zh.html': ['https://cfchan.hk/apps.html', 'https://cfchan.hk/apps-zh.html'],
-    'contact.html': ['https://cfchan.hk/contact.html', 'https://cfchan.hk/contact-zh.html'],
-    'contact-zh.html': ['https://cfchan.hk/contact.html', 'https://cfchan.hk/contact-zh.html']
+    'index.html': ['https://chancf.com/', 'https://chancf.com/home-zh.html'],
+    'home.html': ['https://chancf.com/', 'https://chancf.com/home-zh.html'],
+    'home-zh.html': ['https://chancf.com/', 'https://chancf.com/home-zh.html'],
+    'about.html': ['https://chancf.com/about.html', 'https://chancf.com/about-zh.html'],
+    'about-zh.html': ['https://chancf.com/about.html', 'https://chancf.com/about-zh.html'],
+    'blog.html': ['https://chancf.com/blog.html', 'https://chancf.com/blog-zh.html'],
+    'blog-zh.html': ['https://chancf.com/blog.html', 'https://chancf.com/blog-zh.html'],
+    'projects.html': ['https://chancf.com/projects.html', 'https://chancf.com/projects-zh.html'],
+    'projects-zh.html': ['https://chancf.com/projects.html', 'https://chancf.com/projects-zh.html'],
+    'apps.html': ['https://chancf.com/apps.html', 'https://chancf.com/apps-zh.html'],
+    'apps-zh.html': ['https://chancf.com/apps.html', 'https://chancf.com/apps-zh.html'],
+    'contact.html': ['https://chancf.com/contact.html', 'https://chancf.com/contact-zh.html'],
+    'contact-zh.html': ['https://chancf.com/contact.html', 'https://chancf.com/contact-zh.html']
   };
   const urls = pairs[page] || pairs['index.html'];
   [['en-HK', urls[0]], ['zh-Hant-HK', urls[1]], ['x-default', urls[0]]].forEach(([lang, href]) => {
@@ -36,12 +36,12 @@ const menuButton = document.querySelector('.menu-toggle');
     schema.textContent = JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'Person',
-      '@id': 'https://cfchan.hk/#person',
+      '@id': 'https://chancf.com/#person',
       name: 'Chan Chak Fung',
       alternateName: ['CF Chan', '陳澤鋒'],
       jobTitle: ['Entrepreneur', 'Applied AI Practitioner', 'Technology Commentator', 'Low-Altitude Economy Practitioner'],
-      url: 'https://cfchan.hk/',
-      image: 'https://cfchan.hk/assets/portrait.jpeg',
+      url: 'https://chancf.com/',
+      image: 'https://chancf.com/assets/portrait.jpeg',
       sameAs: ['https://cfchan.substack.com/'],
       knowsAbout: ['Applied AI', 'AI Agents', 'AI Business Workflow', 'Emerging Technology', 'Low-Altitude Economy', 'Drones', 'Entrepreneurship', 'Business Transformation', 'Technology Strategy'],
       address: { '@type': 'PostalAddress', addressLocality: 'Hong Kong', addressCountry: 'HK' }
